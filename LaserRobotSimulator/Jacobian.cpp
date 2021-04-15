@@ -1,6 +1,8 @@
 #include "Jacobian.hpp"
 #include "Robot.hpp"
 
+#include <iomanip>
+
 #define DOUBLE_EPS  (1e-9)
 
 Jacobian::Jacobian()
@@ -76,19 +78,19 @@ void Jacobian::SwapRow(Jacobian &lhs, Jacobian &rhs, size_t rowA, size_t rowB)
 
 void Jacobian::SortByHead(Jacobian &lhs, Jacobian &rhs)
 {
-    bool reiterate = true;
-    while (reiterate)
+    bool repeat = true;
+    while (repeat)
     {
-        reiterate = false;
-        for (size_t i = 0; i < 5; i++)
+        repeat = false;
+        for (size_t i = 1; i < 5; i++)
         {
-            size_t currHeadPos = lhs.GetHeadPosition(i);
-            size_t nextHeadPos = lhs.GetHeadPosition(i + 1);
+            size_t prevHeadPos = lhs.GetHeadPosition(i - 1);
+            size_t nextHeadPos = lhs.GetHeadPosition(i);
 
-            if (nextHeadPos < currHeadPos)
+            if (prevHeadPos > nextHeadPos)
             {
-                Jacobian::SwapRow(lhs, rhs, currHeadPos, nextHeadPos);
-                reiterate = true;
+                Jacobian::SwapRow(lhs, rhs, i - 1, i);
+                repeat = true;
             }
         }
     }
@@ -129,10 +131,15 @@ void Jacobian::RowReduceDown(Jacobian &lhs, Jacobian &rhs, size_t baseRow)
     double baseHead = lhs.Get(baseRow, baseHeadPos);
     Jacobian::NormalizeToHead(lhs, rhs, baseRow);
 
-    for (size_t nextRow = baseRow; nextRow < 6; nextRow++)
+    for (size_t nextRow = baseRow + 1; nextRow < 6; nextRow++)
     {
         double scaler = -1.0 * lhs.Get(nextRow, baseHeadPos) / baseHead;
-        Jacobian::AddRow(lhs, rhs, baseRow, nextRow, scaler);
+
+        if (fabs(lhs.Get(nextRow, baseHeadPos)) > DOUBLE_EPS)
+        {
+            Jacobian::NormalizeToHead(lhs, rhs, nextRow);
+            Jacobian::AddRow(lhs, rhs, baseRow, nextRow, -1.0);
+        }
     }
 }
 
@@ -165,6 +172,10 @@ Jacobian Jacobian::Inverted()
         Jacobian::RowReduceDown(copy, inverse, row);
     }
 
+    if (DebugCheck())
+        std::cout << "row-echelon form:" << std::endl;
+    DebugPrint(copy, inverse);
+
     for (size_t rowIter = 0; rowIter < 6; rowIter++)
     {
         size_t row = 5 - rowIter;
@@ -172,6 +183,51 @@ Jacobian Jacobian::Inverted()
     }
 
     return inverse;
+}
+
+bool Jacobian::DebugCheck()
+{
+    return Simulator::Input().KeyTapped(SDLK_3) && Simulator::Input().KeyPressed(SDLK_LCTRL);
+}
+
+void Jacobian::DebugPrint(Jacobian &lhs, Jacobian &rhs)
+{
+    if (Simulator::Input().KeyTapped(SDLK_3) && Simulator::Input().KeyPressed(SDLK_LCTRL))
+    {
+        for (size_t row = 0; row < 6; row++)
+        {
+            std::cout << "[ ";
+            for (size_t col = 0; col < 6; col++)
+                std::cout << std::fixed << std::setprecision(3) << lhs.Get(row, col) << " ";
+            std::cout << "] ";
+
+            std::cout << "[ ";
+            for (size_t col = 0; col < 6; col++)
+                std::cout << rhs.Get(row, col) << " ";
+            std::cout << "]" << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+Jacobian Jacobian::Multiply(Jacobian &lhs, Jacobian &rhs)
+{
+    Jacobian result = Jacobian();
+
+    for (int row = 0; row < 6; row++)
+    {
+        for (int col = 0; col < 6; col++)
+        {
+            double sum = 0;
+
+            for (int i = 0; i < 6; i++)
+                sum += lhs.Get(row, i) * rhs.Get(i, col);
+
+            result.Set(row, col, sum);
+        }
+    }
+
+    return result;
 }
 
 void Jacobian::Set(size_t row, size_t col, double val)

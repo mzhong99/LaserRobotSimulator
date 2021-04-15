@@ -21,7 +21,7 @@
 #define DIFFERENTIAL_DELTA      (0.00001)
 #define DK_SCREEN_OFFSET        (Vector2D<int>(32, 64))
 
-#define CONTROLS_OFFSET         (Vector2D<int>(32, 600))
+#define CONTROLS_OFFSET         (Vector2D<int>(32, 560))
 
 DHParam DHParam::CreateRevolute(double alpha, double a, double d)
 {
@@ -89,8 +89,7 @@ Robot::Robot()
 {
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
-    m_dhParams.push_back(DHParam::CreatePrismatic(-1.0 * M_PI / 2.0, 0, 0));
-
+    m_dhParams.push_back(DHParam::CreateRevolute(0, 0, 2.0));
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(0, 0, 0));
@@ -144,7 +143,7 @@ void Robot::ShiftedEndEffector(
         Transform transform = Transform(dhparam.Theta, dhparam.Alpha, dhparam.A, dhparam.D);
         if (i == qIter && qIter == 5)
         {
-            if (Simulator::Input().KeyTapped(SDLK_2))
+            if (Simulator::Input().KeyTapped(SDLK_2) && Simulator::Input().KeyPressed(SDLK_LCTRL))
             {
                 std::cout << std::fixed << std::setprecision(8);
                 std::cout << "Last Transform:" << std::endl;
@@ -197,7 +196,7 @@ void Robot::RecomputeJacobian()
         this->m_jacobian.Set(5, qIter, angularDelta.z);
     }
 
-    if (Simulator::Input().KeyTapped(SDLK_1))
+    if (Simulator::Input().KeyTapped(SDLK_1) && Simulator::Input().KeyPressed(SDLK_LCTRL))
     {
         std::cout << "Jacobian:" << std::endl;
         for (size_t row = 0; row < 6; row++)
@@ -205,6 +204,27 @@ void Robot::RecomputeJacobian()
             std::cout << "[ ";
             for (size_t col = 0; col < 6; col++)
                 std::cout << this->m_jacobian.Get(row, col) << " ";
+            std::cout << "]" << std::endl;
+        }
+
+        std::cout << "Jacobian (Inverted):" << std::endl;
+        Jacobian inverted = this->m_jacobian.Inverted();
+        for (size_t row = 0; row < 6; row++)
+        {
+            std::cout << "[ ";
+            for (size_t col = 0; col < 6; col++)
+                std::cout << inverted.Get(row, col) << " ";
+            std::cout << "]" << std::endl;
+        }
+
+        std::cout << "Jacobian Multiplied" << std::endl;
+        Jacobian multiplied = Jacobian::Multiply(m_jacobian, inverted);
+
+        for (size_t row = 0; row < 6; row++)
+        {
+            std::cout << "[ ";
+            for (size_t col = 0; col < 6; col++)
+                std::cout << multiplied.Get(row, col) << " ";
             std::cout << "]" << std::endl;
         }
     }
@@ -234,11 +254,6 @@ std::vector<double> Robot::GetInverseDKResults()
         this->m_manualEndEffectorVelocity[5]);
 
     std::vector<double> result = inverted.InverseMultiply(linear, angular);
-
-    for (size_t i = 0; i < m_dhParams.size(); i++)
-        if (m_dhParams[i].Type == JointType::REVOLUTE)
-            result[i] = fmod(result[i], 2.0 * M_PI);
-
     return result;
 }
 
@@ -520,6 +535,11 @@ void RobotView::ShowInverseDK()
         "Joint List. [Inverse Differential Kinematics]");
 
     std::vector<double> jointVelocities = this->m_robot->GetDKResults();
+    for (size_t i = 0; i < jointVelocities.size(); i++)
+    {
+        Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
+            "    Q%u' = %+3.3f", i + 1, jointVelocities[i]);
+    }
 
     std::vector<double> endEffectorVelocity = this->m_robot->GetEndEffectorVelocity();
 
@@ -565,20 +585,27 @@ void RobotView::ShowControls()
 {
     Vector2D<int> offset = CONTROLS_OFFSET;
     Simulator::Graphics().PrintString(offset.x, offset.y, "Controls:");
+
     Simulator::Graphics().PrintString(offset.x, offset.y + 12, 
         "    WASD or Middle Mouse Button: Camera");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 24, 
-        "    1-6: Toggle Axis View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 48,
-        "    Shift + 1-6: Solo Toggle Axis View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 60,
-        "    Backtick (next to the 1 key): Show all Axes)");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 72,
+    Simulator::Graphics().PrintString(offset.x, offset.y + 24,
         "    ZXCV: Top/Front/Side/Isometric View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 84,
-        "    Q: Toggle Forwards/Backwards Differential Kinematics");
+
+    Simulator::Graphics().PrintString(offset.x, offset.y + 48, 
+        "    1-6: Toggle Axis View");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 60,
+        "    Shift + 1-6: Solo Toggle Axis View");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 72,
+        "    Backtick (next to the 1 key): Show all Axes)");
+
     Simulator::Graphics().PrintString(offset.x, offset.y + 96,
         "    Q: Toggle Forwards/Backwards Differential Kinematics");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 108,
+        "    Right Mouse Button: Pan 2D View");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 120,
+        "    Left Mouse Button: Adjust selected component");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 132,
+        "    Shift + Left Mouse Button: Adjust joint velocity");
 
 }
 

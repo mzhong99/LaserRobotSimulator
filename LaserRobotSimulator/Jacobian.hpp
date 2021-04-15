@@ -22,6 +22,9 @@ private:
     static void RowReduceDown(Jacobian &lhs, Jacobian &rhs, size_t baseRow);
     static void RowReduceUp(Jacobian &lhs, Jacobian &rhs, size_t baseRow);
 
+    static void DebugPrint(Jacobian &lhs, Jacobian &rhs);
+    static bool DebugCheck();
+
 public:
     Jacobian();
 
@@ -33,6 +36,8 @@ public:
     std::vector<double> InverseMultiply(Vector3D<double> linear, Vector3D<double> angular);
 
     Jacobian Inverted();
+
+    static Jacobian Multiply(Jacobian &lhs, Jacobian &rhs);
 
     void Set(size_t row, size_t col, double val);
     double Get(size_t row, size_t col);
