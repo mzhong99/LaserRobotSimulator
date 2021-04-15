@@ -1,0 +1,20 @@
+[
+    {
+        "name": "Sword Slash",
+        "pattern": "cone",
+        "width": 60,
+        "target_style": "autotarget",
+        "windup": 1500,
+        "radius": 150,
+        "pulses": 1
+    },
+    {
+        "name": "Piercing Arrow",
+        "pattern": "rectangle",
+        "width": 15,
+        "height": 800,
+        "target_style": "autotarget",
+        "windup": 1500,
+        "pulses": 1
+    }
+]

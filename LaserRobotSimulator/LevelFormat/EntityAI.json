@@ -1,0 +1,26 @@
+[
+    {
+        "name": "berserker",
+        "health": 10,
+        "speed": 150,
+        "radius": 20,
+        "behavior":
+        [
+            [ "target_player" ],
+            [ "chase_target", 50 ],
+            [ "use_skill", "Sword Slash" ]
+        ]
+    },
+    {
+        "name": "sniper",
+        "health": 8,
+        "speed": 100,
+        "radius": 20,
+        "behavior":
+        [
+            [ "target_player" ],
+            [ "flee_target", 200 ],
+            [ "use_skill", "Piercing Arrow" ]
+        ]
+    }
+]

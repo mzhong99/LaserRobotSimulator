@@ -1,0 +1,22 @@
+Gauntlet: Technical Engineering Design Document
+====================================================================================================
+
+Main System Components:
+    - ECS Overall Design
+    - "Entities interact with one another through Targeted Actions"
+    - Entities can target one another
+    - Entities stored as a part of multiple indexes - design INTERFACES for indexes, but don't worry
+      about the implementation because you can fix that later.
+    - Actions in this game are mostly ground-targeted, but it may be worth implementing an internal
+      targeting system for more precise aiming
+    
+Major Modules:
+    +-------+        +---------+        +--------+
+    | Input | -----> | Systems | -----> | Output |
+    +-------+        +---------+        +--------+
+                         | ^
+                         | |
+                         v |
+                     +----------+
+                     | Entities |
+                     +----------+
