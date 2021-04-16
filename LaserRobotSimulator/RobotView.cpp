@@ -21,6 +21,7 @@ RobotView::RobotView(Robot *robot)
     this->m_pitch = -1.0 * M_PI / 6.0;
 
     this->m_shown.resize(this->m_robot->GetAllStubs().size(), true);
+    this->m_showStatics = true;
 }
 
 void RobotView::IncreasePitch()
@@ -189,12 +190,20 @@ void RobotView::ShowForwardsDK()
 
     for (size_t i = 0; i < manualJointSpeeds.size(); i++)
     {
+        if (i == this->m_robot->GetIdx())
+            Simulator::Graphics().SetFGColor(Graphics::COLOR_BLUE);
+
         Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
-            "    Q%Iu = %+3.3f    Q%Iu' = %+3.3f",
-            i + 1, dhparams[i].GetQ(), i + 1, manualJointSpeeds[i]);
+            "    Q%d = %+3.3f    Q%d' = %+3.3f %s",
+            (int)i + 1, dhparams[i].GetQ(), 
+            (int)i + 1, manualJointSpeeds[i],
+            dhparams[i].Type == JointType::PRISMATIC ? "m/s" : "rad/s");
 
         if (i == this->m_robot->GetIdx())
+        {
             Simulator::Graphics().PrintString(offset.x, offset.y + (12 * ((int)i + 1)), " -> ");
+            Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
+        }
     }
 
     Simulator::Graphics().PrintString(offset.x, offset.y + 100, "End Effector Position");
@@ -224,13 +233,44 @@ void RobotView::ShowInverseDK()
         "Joint List. [Inverse Differential Kinematics]");
 
     std::vector<double> jointVelocities = this->m_robot->GetDKResults();
+    std::vector<DHParam> dhparams = this->m_robot->GetAllDHParams();
+
     for (size_t i = 0; i < jointVelocities.size(); i++)
     {
+        if (i == this->m_robot->GetIdx())
+            Simulator::Graphics().SetFGColor(Graphics::COLOR_BLUE);
+
         Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
-            "    Q%u' = %+3.3f", i + 1, jointVelocities[i]);
+            "    Q%d = %+3.3f    Q%d' = %+3.3f %s %s",
+            (int)i + 1, dhparams[i].GetQ(), 
+            (int)i + 1, jointVelocities[i], 
+            dhparams[i].Type == JointType::PRISMATIC ? "m/s" : "rad/s",
+            this->m_robot->IsFreeJoint(i) ? "[Free]" : "");
+
+        if (i == this->m_robot->GetIdx())
+        {
+            Simulator::Graphics().PrintString(offset.x, offset.y + (12 * ((int)i + 1)), " -> ");
+            Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
+        }
     }
 
     std::vector<double> endEffectorVelocity = this->m_robot->GetEndEffectorVelocity();
+
+    Simulator::Graphics().PrintString(offset.x, offset.y + 100, "End Effector Position");
+
+    Vector3D<double> endEffectorPosition = this->m_robot->GetEndEffectorPosition();
+    Vector3D<double> angular;
+    angular.x = atan2(endEffectorPosition.z, endEffectorPosition.y);
+    angular.y = atan2(endEffectorPosition.x, endEffectorPosition.z);
+    angular.z = atan2(endEffectorPosition.y, endEffectorPosition.x);
+
+    Simulator::Graphics().PrintString(offset.x, offset.y + 112, 
+        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m", 
+        endEffectorPosition.x, endEffectorPosition.y, endEffectorPosition.z);
+
+    Simulator::Graphics().PrintString(offset.x, offset.y + 124, 
+        "    Angular: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> rad", 
+        angular.x, angular.y, angular.z);
 
     Simulator::Graphics().PrintString(offset.x, offset.y + 148, "End Effector Velocity");
     Simulator::Graphics().PrintString(offset.x, offset.y + 160, 
@@ -259,9 +299,12 @@ void RobotView::ShowEEStatics()
     Vector3D<double> moment = Vector3D<double>(
         eeForceMoment.At(3, 0), eeForceMoment.At(4, 0), eeForceMoment.At(5, 0));
 
-    Vector3D<double> forcePos = origin3D + force;
-    Vector3D<double> momentPos = origin3D + moment;
+    Vector3D<double> forceInCamera = baseToCamera.TransformPoint(force);
+    Vector3D<double> momentInCamera = baseToCamera.TransformPoint(moment);
 
+    Vector3D<double> forcePos = forceInCamera + origin3D;
+    Vector3D<double> momentPos = momentInCamera + origin3D;
+    
     Vector2D<double> origin2D = Vector2D<double>(origin3D.x, origin3D.z);
     Vector2D<double> force2D = Vector2D<double>(forcePos.x, forcePos.z);
     Vector2D<double> moment2D = Vector2D<double>(momentPos.x, momentPos.z);
@@ -281,22 +324,127 @@ void RobotView::ShowEEStatics()
 
     Simulator::Graphics().SetFGColor(Graphics::COLOR_RED);
     Simulator::Graphics().DrawArrow(screenOrigin, screenForcePos,
-        "F_e=<%.3lf, %.3lf, %.3lf> N", force.x, force.y, force.z);
+        "F_e=<%.3f, %.3f, %.3f> N", force.x, force.y, force.z);
 
     Simulator::Graphics().DrawArrow(screenOrigin, screenMomentPos,
-        "M_e=<%.3lf, %.3lf, %.3lf> Nm", moment.x, moment.y, moment.z);
+        "M_e=<%.3f, %.3f, %.3f> Nm", moment.x, moment.y, moment.z);
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
+}
+
+void RobotView::RenderJointStaticReaction(
+    CoordinateStub &stub, double reaction, JointType jointType, int frameNumber)
+{
+    Rotation baseToCameraRotation = this->GetSphericalRotation();
+
+    Vector2D<double> xyOffset = m_screenOffset2D * 0.01;
+    xyOffset.x *= -1.0;
+
+    Transform stubToBase = stub.GetTransform();
+    Transform baseToCamera = Transform(baseToCameraRotation, 0);
+    Transform stubToCamera = Transform::Multiply(baseToCamera, stubToBase);
+
+    Vector3D<double> origin3D = stubToCamera.GetColumn(3);
+    Vector3D<double> offset3D = stubToCamera.GetColumn(2) * reaction;
+
+    Vector3D<double> rxnPoint3D = origin3D + offset3D;
+
+    Vector2D<double> origin2D = Vector2D<double>(origin3D.x, origin3D.z);
+    Vector2D<double> rxnPoint2D = Vector2D<double>(rxnPoint3D.x, rxnPoint3D.z);
+
+    Vector2D<double> scOrigin2D = Simulator::Graphics().LogicToScreen2D(
+        origin2D * this->m_zoomFactor);
+
+    Vector2D<double> scRxnPoint2D = Simulator::Graphics().LogicToScreen2D(
+        rxnPoint2D * this->m_zoomFactor);
+
+    scOrigin2D -= this->m_screenOffset2D;
+    scRxnPoint2D -= this->m_screenOffset2D;
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_YELLOW);
+    Simulator::Graphics().DrawArrow(scOrigin2D, scRxnPoint2D,
+        "%s_Q%d=%.3lf%s",
+        jointType == JointType::PRISMATIC ? "F" : "M",
+        frameNumber,
+        reaction,
+        jointType == JointType::PRISMATIC ? "N" : "Nm");
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 
 void RobotView::ShowJointStatics()
 {
+    std::vector<CoordinateStub> stubs = this->m_robot->GetAllStubs();
+    std::vector<DHParam> dhparams = this->m_robot->GetAllDHParams();
+    std::vector<double> reactions = this->m_robot->JointForceMomentReactions();
 
+    CoordinateStub prevStub = CoordinateStub();
+
+    for (size_t i = 0; i < stubs.size(); i++)
+    {
+        if (this->m_shown[i])
+        {
+            this->RenderJointStaticReaction(prevStub, reactions[i], dhparams[i].Type, i + 1);
+            prevStub = stubs[i];
+        }
+    }
+}
+
+void RobotView::ShowBaseTransformStatics()
+{
+    Vector3D<double> baseForceEquivalent = this->m_robot->BaseForceEquivalent();
+    Vector3D<double> baseMomentEquivalent = this->m_robot->BaseMomentEquivalent();
+
+    Rotation baseToCameraRotation = this->GetSphericalRotation();
+
+    Vector2D<double> xyOffset = m_screenOffset2D * 0.01;
+    xyOffset.x *= -1.0;
+
+    Transform baseToCamera = Transform(baseToCameraRotation, Vector3D<double>(0));
+
+    Vector3D<double> origin3D = baseToCamera.GetColumn(3);
+    Vector2D<double> origin2D = Vector2D<double>(origin3D.x, origin3D.z);
+
+    Vector3D<double> cameraForce = baseToCamera.TransformPoint(baseForceEquivalent);
+    Vector3D<double> cameraMoment = baseToCamera.TransformPoint(baseMomentEquivalent);
+
+    cameraForce -= origin3D;
+    cameraMoment -= origin3D;
+
+    Vector2D<double> force2D = Vector2D<double>(cameraForce.x, cameraForce.z);
+    Vector2D<double> moment2D = Vector2D<double>(cameraMoment.x, cameraMoment.z);
+
+    Vector2D<double> screenOrigin = Simulator::Graphics().LogicToScreen2D(
+        origin2D * this->m_zoomFactor);
+
+    Vector2D<double> screenForce = Simulator::Graphics().LogicToScreen2D(
+        force2D * this->m_zoomFactor);
+
+    Vector2D<double> screenMoment = Simulator::Graphics().LogicToScreen2D(
+        moment2D * this->m_zoomFactor);
+
+    screenOrigin -= this->m_screenOffset2D;
+    screenForce -= this->m_screenOffset2D;
+    screenMoment -= this->m_screenOffset2D;
+
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_CYAN);
+    Simulator::Graphics().DrawArrow(screenOrigin, screenForce,
+        "F_eq=<%.3lf, %.3lf, %.3lf> N",
+        baseForceEquivalent.x, baseForceEquivalent.y, baseForceEquivalent.z);
+
+    Simulator::Graphics().DrawArrow(screenOrigin, screenMoment,
+        "M_eq=<%.3lf, %.3lf, %.3lf> Nm",
+        baseMomentEquivalent.x, baseMomentEquivalent.y, baseMomentEquivalent.z);
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 
 void RobotView::ShowStatics()
 {
-    this->ShowEEStatics();
-    this->ShowJointStatics();
+    if (this->m_showStatics)
+    {
+        this->ShowEEStatics();
+        this->ShowJointStatics();
+        this->ShowBaseTransformStatics();
+    }
 }
 
 void RobotView::ShowDK()

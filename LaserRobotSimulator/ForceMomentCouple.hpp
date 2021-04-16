@@ -32,5 +32,7 @@ public:
     void AccumulateMomentMagnitude(double delta) { this->m_moment.Magnitude += delta; }
 
     Matrix AsColumn();
+    Vector3D<double> Force() { return m_force.Cartesian(); }
+    Vector3D<double> Moment() { return m_moment.Cartesian(); }
 };
 

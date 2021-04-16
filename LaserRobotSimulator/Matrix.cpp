@@ -1,6 +1,8 @@
 #include "Matrix.hpp"
 #include "Simulator.hpp"
 
+#include <cstdio>
+
 #define DOUBLE_EPS (1e-14)
 
 Matrix::Matrix(size_t rows, size_t cols): m_rows(rows), m_cols(cols) 
@@ -57,11 +59,11 @@ Matrix Matrix::LRJoin(Matrix &lhs, Matrix &rhs)
 
     for (size_t row = 0; row < lhs.Rows(); row++)
     {
-        for (size_t col = 0; col < rhs.Cols(); col++)
-        {
+        for (size_t col = 0; col < lhs.Cols(); col++)
             result.At(row, col) = lhs.At(row, col);
+
+        for (size_t col = 0; col < rhs.Cols(); col++)
             result.At(row, col + lhs.Cols()) = rhs.At(row, col);
-        }
     }
 
     return result;
@@ -119,7 +121,7 @@ size_t Matrix::GetHeadPosition(size_t row)
 {
     for (size_t col = 0; col < this->Cols(); col++)
         if (fabs(this->At(row, col)) < DOUBLE_EPS)
-            this->At(row, col) = 0;
+            this->At(row, col) = 0.0;
         else
             return col;
 
@@ -137,12 +139,15 @@ void Matrix::SortByHead()
     if (this->Rows() < 2)
         return;
 
-    for (size_t row = 0; row < this->Rows() - 1; row++)
+    for (size_t row = 0; row < this->Rows(); row++)
     {
-        for (size_t i = 0; i < this->Rows() - i - 1; i++)
+        for (size_t i = 0; i < this->Rows() - 1; i++)
         {
             size_t currHeadPos = this->GetHeadPosition(i);
             size_t nextHeadPos = this->GetHeadPosition(i + 1);
+
+            if (DebugCheck())
+                std::cout << currHeadPos << " " << nextHeadPos << std::endl;
 
             if (currHeadPos > nextHeadPos)
                 this->SwapRow(i, i + 1);
@@ -208,6 +213,10 @@ void Matrix::RowReduceUp(size_t baseRow)
     for (size_t prevRow = 0; prevRow < baseRow; prevRow++)
     {
         size_t baseHeadPos = this->GetHeadPosition(baseRow);
+
+        if (fabs(this->At(prevRow, baseHeadPos) < DOUBLE_EPS))
+            continue;
+
         this->NormalizeRowToElement(prevRow, baseRow, baseHeadPos);
         this->SubtractRow(baseRow, prevRow);
         this->NormalizeToHead(prevRow);
@@ -297,4 +306,27 @@ void Matrix::DebugPrint()
         std::cout << "]" << std::endl;
     }
     std::cout << std::endl;
+}
+
+std::ostream &operator<<(std::ostream &os, Matrix &matrix)
+{
+    for (size_t i = 0; i < matrix.Rows(); i++)
+    {
+        std::cout << "[";
+        const char *sep = "";
+
+        for (size_t j = 0; j < matrix.Cols(); j++)
+        {
+            char buf[256];
+
+            snprintf(buf, 256, "%s%+.8f", sep, matrix.At(i, j));
+            std::cout << buf;
+
+            sep = ", ";
+        }
+
+        std::cout << "]" << std::endl;
+    }
+
+    return os;
 }

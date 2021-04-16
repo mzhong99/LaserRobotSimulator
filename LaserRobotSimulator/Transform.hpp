@@ -25,6 +25,8 @@ public:
     Rotation GetRotation();
     Vector3D<double> GetDisplacement();
 
+    Vector3D<double> TransformPoint(Vector3D<double> point);
+
     static Transform Multiply(Transform &lhs, Transform &rhs);
 };
 

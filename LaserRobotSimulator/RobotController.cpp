@@ -60,27 +60,31 @@ void RobotController::PollChangeQ()
 
     this->m_robot->GetJoint().SetQ(oldQ + increment);
 
-    if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+    if (!Simulator::Input().KeyPressed(SDLK_LCTRL))
     {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+        if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
         {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
+            if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+            {
+                Vector2D<int> motion = Simulator::Input().MouseMotion();
+                this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
+            }
         }
-    }
-    else
-    {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+        else
         {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->GetJoint().SetQ(oldQ + (motion.y * -0.005));
+            if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+            {
+                Vector2D<int> motion = Simulator::Input().MouseMotion();
+                this->m_robot->GetJoint().SetQ(oldQ + (motion.y * -0.005));
+            }
         }
     }
 }
 
 void RobotController::PollChangeEndEffector()
 {
-    if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+    if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT) 
+        && Simulator::Input().KeyPressed(SDLK_LCTRL))
     {
         Vector2D<int> motion = Simulator::Input().MouseMotion();
         this->m_robot->AccumulateEndEffectorVelocity(motion.y * -0.005);
@@ -144,6 +148,9 @@ void RobotController::PollChangeDKMode()
 
 void RobotController::PollToggleShown()
 {
+    if (Simulator::Input().KeyTapped(SDLK_t))
+        this->m_view->ToggleShowStatics();
+
     if (this->m_robot->IsDKForwards())
     {
         if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
@@ -235,9 +242,8 @@ void RobotController::Poll()
 {
     this->PollChangeIdx();
 
-    if (this->m_robot->IsDKForwards())
-        this->PollChangeQ();
-    else
+    this->PollChangeQ();
+    if (!this->m_robot->IsDKForwards())
         this->PollChangeEndEffector();
 
     this->PollToggleShown();

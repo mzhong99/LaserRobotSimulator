@@ -99,11 +99,14 @@ Robot::Robot()
     m_dhParams.push_back(DHParam::CreatePrismatic(0, 0, 0));
 
     m_coordinateStubs.resize(m_dhParams.size());
-    m_manualJointSpeeds.resize(m_dhParams.size());
-    m_manualEndEffectorVelocity.resize(3);
+    m_manualJointSpeeds.resize(m_dhParams.size(), 1.2);
+    m_jointForceMoments.resize(m_dhParams.size());
 
     m_jacobian = Matrix(6, m_dhParams.size());
-    m_jointForceMoments.resize(m_dhParams.size());
+    m_manualEndEffectorVelocity.resize(m_jacobian.Rows());
+    m_isFreeVariable.resize(m_dhParams.size());
+
+    m_manualEndEffectorVelocity = { 1.0, 2.0, 3.0 };
 }
 
 void Robot::RecomputeCoordinateStubs()
@@ -202,11 +205,24 @@ void Robot::RecomputeJacobian()
 
 void Robot::RecomputeStatics()
 {
+    /* End effector statics */
     Matrix jacobianT = m_jacobian.Transposed().Multiply(-1.0);
     Matrix forceMoment = m_forceMoment.AsColumn();
 
     Matrix jointResult = Matrix::Multiply(jacobianT, forceMoment);
     this->m_jointForceMoments = jointResult.Flatten();
+
+    /* Base frame equivalent force */
+    Transform eeToBase = this->EndEffectorTransform();
+    Vector3D<double> posBaseToEE = eeToBase.GetColumn(3);
+    Vector3D<double> forceInBase = this->m_forceMoment.Force();
+
+    Vector3D<double> momentAboutEEInBase = eeToBase.TransformPoint(this->m_forceMoment.Moment());
+    Vector3D<double> momentDelta = Vector3D<double>::Cross(posBaseToEE, forceInBase);
+    Vector3D<double> momentAboutBaseInBase = momentAboutEEInBase - momentDelta;
+
+    this->m_baseForceEquivalent = forceInBase;
+    this->m_baseMomentEquivalent = momentAboutBaseInBase;
 }
 
 std::vector<double> Robot::GetForwardDKResults()
@@ -220,44 +236,53 @@ std::vector<double> Robot::GetForwardDKResults()
 
 std::vector<double> Robot::GetInverseDKResults()
 {
-    // return this->m_jacobian.LeastSquaresMultiply(this->m_manualEndEffectorVelocity);
-    // Jacobian inverted = this->m_jacobian.Inverted();
+    Matrix endEffectorFull = Matrix::CreateCol(this->m_manualEndEffectorVelocity);
+    Matrix endEffectorLinear = endEffectorFull.SubMatrix(0, 3, 0, 1);
 
-    // Vector3D<double> linear = Vector3D<double>(
-    //     this->m_manualEndEffectorVelocity[0],
-    //     this->m_manualEndEffectorVelocity[1],
-    //     this->m_manualEndEffectorVelocity[2]);
+    Matrix jacobianLinear = this->m_jacobian.SubMatrix(0, 3, 0, m_jacobian.Cols());
+    Matrix jacobianAugmented = Matrix::LRJoin(jacobianLinear, endEffectorLinear);
 
-    // Vector3D<double> angular = Vector3D<double>(
-    //     this->m_manualEndEffectorVelocity[3],
-    //     this->m_manualEndEffectorVelocity[4],
-    //     this->m_manualEndEffectorVelocity[5]);
+    jacobianAugmented.GaussJordanEliminate();
 
-    // std::vector<double> result = inverted.InverseMultiply(linear, angular);
-    // return result;
-    Matrix bcol = Matrix::CreateCol(this->m_manualEndEffectorVelocity);
-
-    if (Matrix::DebugCheck())
-        this->m_jacobian.DebugPrint();
-
-    Matrix AT = this->m_jacobian.Transposed();
-    if (Matrix::DebugCheck())
-        AT.DebugPrint();
-
-    Matrix ATA = Matrix::Multiply(AT, this->m_jacobian);
-    if (Matrix::DebugCheck())
+    if (Simulator::Input().KeyTapped(SDLK_j))
     {
-        ATA.DebugPrint();
-        std::cout << "DEFAULT" << std::endl;
+        std::cout << "Jacobian:" << std::endl << m_jacobian << std::endl;
+        std::cout << "Jacobian Linear:" << std::endl << jacobianLinear << std::endl;
+        std::cout << "Jacobian Augment:" << std::endl << jacobianAugmented << std::endl;
     }
 
-    if (Matrix::DebugCheck())
-        Matrix::Multiply(ATA, bcol).DebugPrint();
+    std::vector<double> results;
 
-    Matrix ATAinverted = ATA.Inverted();
-    Matrix left = Matrix::Multiply(ATAinverted, AT);
+    results.resize(this->m_dhParams.size(), 0.0);
+    m_isFreeVariable.resize(this->m_dhParams.size(), true);
 
-    return Matrix::Multiply(left, bcol).Flatten();
+    for (size_t i = 0; i < m_isFreeVariable.size(); i++)
+        m_isFreeVariable[i] = true;
+
+    for (size_t row = 0; row < jacobianAugmented.Rows(); row++)
+    {
+        size_t freeCol = jacobianAugmented.GetHeadPosition(row);
+        m_isFreeVariable[freeCol] = false;
+    }
+
+    for (size_t row = 0; row < jacobianAugmented.Rows(); row++)
+    {
+        results[row] = jacobianAugmented.At(row, jacobianAugmented.Cols() - 1);
+        for (size_t col = 0; col < jacobianAugmented.Cols() - 1; col++)
+        {
+            if (m_isFreeVariable[col])
+            {
+                double freeDelta = jacobianAugmented.At(row, col) * this->m_manualJointSpeeds[col];
+                results[row] -= freeDelta;
+            }
+        }
+    }
+
+    for (size_t col = 0; col < results.size(); col++)
+        if (m_isFreeVariable[col])
+            results[col] = this->m_manualJointSpeeds[col];
+
+    return results;
 }
 
 std::vector<double> Robot::GetDKResults()
@@ -270,6 +295,11 @@ std::vector<double> Robot::GetDKResults()
         result = this->GetInverseDKResults();
 
     return result;
+}
+
+Matrix Robot::GetEEForceMoment() 
+{ 
+    return this->m_forceMoment.AsColumn();
 }
 
 void Robot::Recompute()

@@ -54,6 +54,19 @@ Vector3D<double> Transform::GetDisplacement()
     return Vector3D<double>(this->At(0, 3), this->At(1, 3), this->At(2, 3));
 }
 
+Vector3D<double> Transform::TransformPoint(Vector3D<double> point)
+{
+    Matrix bcol = Matrix(4, 1);
+
+    bcol.At(0, 0) = point.x;
+    bcol.At(1, 0) = point.y;
+    bcol.At(2, 0) = point.z;
+    bcol.At(3, 0) = 1.0;
+
+    Matrix result = Matrix::Multiply(this->m_data, bcol);
+    return Vector3D<double>(result.At(0, 0), result.At(1, 0), result.At(2, 0));
+}
+
 Transform Transform::Multiply(Transform &lhs, Transform &rhs)
 {
     Transform result;

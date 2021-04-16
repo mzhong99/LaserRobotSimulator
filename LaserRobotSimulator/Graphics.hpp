@@ -35,7 +35,9 @@ public:
     static const SDL_Color COLOR_WHITE;
     static const SDL_Color COLOR_RED;
     static const SDL_Color COLOR_GREEN;
+    static const SDL_Color COLOR_YELLOW;
     static const SDL_Color COLOR_BLUE;
+    static const SDL_Color COLOR_CYAN;
     static const SDL_Color COLOR_GRAY;
 
     SDL_Texture *LoadTexture(char *filename);

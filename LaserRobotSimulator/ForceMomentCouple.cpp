@@ -13,8 +13,8 @@ Vector3D<double> FMVector::Cartesian()
 
 Matrix ForceMomentCouple::AsColumn()
 {
-    Vector3D<double> force = m_force.Cartesian();
-    Vector3D<double> moment = m_moment.Cartesian();
+    Vector3D<double> force = this->Force();
+    Vector3D<double> moment = this->Moment();
 
     Matrix answer = Matrix(6, 1);
 
@@ -28,3 +28,4 @@ Matrix ForceMomentCouple::AsColumn()
 
     return answer;
 }
+

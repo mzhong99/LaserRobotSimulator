@@ -62,11 +62,15 @@ private:
     int m_idx = 0;
 
     std::vector<double> m_manualEndEffectorVelocity;
+    std::vector<bool> m_isFreeVariable;
 
     Matrix m_jacobian;
     bool m_dkForwards = true;
 
     ForceMomentCouple m_forceMoment;
+    Vector3D<double> m_baseForceEquivalent;
+    Vector3D<double> m_baseMomentEquivalent;
+
     std::vector<double> m_jointForceMoments;
 
     void ShiftedEndEffector(
@@ -108,7 +112,12 @@ public:
     bool IsDKForwards() { return m_dkForwards; }
     void ToggleDKForwards() { m_dkForwards = !m_dkForwards; }
 
-    void AccumulateJointSpeed(double deltaQ) { this->m_manualJointSpeeds[this->m_idx] += deltaQ; }
+    void AccumulateJointSpeed(double deltaQ) 
+    { 
+        if (this->IsDKForwards() || this->m_isFreeVariable[this->m_idx])
+            this->m_manualJointSpeeds[this->m_idx] += deltaQ; 
+    }
+
     void AccumulateEndEffectorVelocity(double deltaE);
 
     void AccumulateEEForceOrientation(double deltaThetaX, double deltaThetaY)
@@ -129,12 +138,19 @@ public:
     void AccumulateEEMomentMagnitude(double deltaMagnitude)
     { this->m_forceMoment.AccumulateMomentMagnitude(deltaMagnitude); }
 
-    Matrix GetEEForceMoment() { return this->m_forceMoment.AsColumn(); }
+    /* Represented in coordinates of the end effector */
+    Matrix GetEEForceMoment();
 
     std::vector<double> GetEndEffectorVelocity() { return this->m_manualEndEffectorVelocity; }
     std::vector<double> GetManualJointSpeeds() { return this->m_manualJointSpeeds; }
 
     Transform EndEffectorTransform() { return this->m_coordinateStubs.back().GetTransform(); }
+    std::vector<double> JointForceMomentReactions() { return this->m_jointForceMoments; }
+
+    Vector3D<double> BaseForceEquivalent() { return this->m_baseForceEquivalent; }
+    Vector3D<double> BaseMomentEquivalent() { return this->m_baseMomentEquivalent; }
+
+    bool IsFreeJoint(size_t idx) { return this->m_isFreeVariable[idx]; };
 };
 
 class RobotView
@@ -148,8 +164,12 @@ private:
     double m_pitch;
 
     double m_zoomFactor;
-    void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
 
+    void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
+    void RenderJointStaticReaction(
+        CoordinateStub &stub, double reaction, JointType jointType, int frameNumber);
+
+    bool m_showStatics;
     std::vector<bool> m_shown;
 
     Vector2D<double> WorldToScreen(Vector3D<double> worldVector);
@@ -170,8 +190,10 @@ private:
 
     void ShowDK();
 
-    void ShowJointStatics();
     void ShowEEStatics();
+    void ShowJointStatics();
+    void ShowBaseTransformStatics();
+
     void ShowStatics();
 
 public:
@@ -198,6 +220,7 @@ public:
     void ZoomOut();
 
     void ToggleShown(size_t idx);
+    void ToggleShowStatics() { this->m_showStatics = !this->m_showStatics; }
     void ShowAll();
 
     void ShowSolo(size_t idx);

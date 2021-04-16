@@ -14,7 +14,6 @@ private:
     size_t m_rows;
     size_t m_cols;
 
-    size_t GetHeadPosition(size_t row);
     void SortByHead();
     void SwapRow(size_t rowA, size_t rowB);
 
@@ -25,8 +24,6 @@ private:
 
     void AddRow(size_t rowFrom, size_t rowTo);
     void SubtractRow(size_t rowFrom, size_t rowTo);
-
-    void GaussJordanEliminate();
 
 public:
     Matrix(): Matrix(0, 0) {}
@@ -49,6 +46,9 @@ public:
     Matrix Transposed();
 
     Matrix Multiply(double scalar);
+
+    void GaussJordanEliminate();
+    size_t GetHeadPosition(size_t row);
     
     /* Excludes the high element, includes the low one */
     Matrix SubMatrix(size_t rowLow, size_t rowHigh, size_t colLow, size_t colHigh);
@@ -56,5 +56,7 @@ public:
 
     static bool DebugCheck();
     void DebugPrint();
+
+    friend std::ostream &operator<<(std::ostream &os, Matrix &matrix);
 };
 
