@@ -102,7 +102,11 @@ public:
     void DecrementIdx()
     { if (this->m_idx > 0) this->m_idx--; }
 
-    void SelectIdx(int idx) { this->m_idx = idx; }
+    void SelectIdx(int idx) 
+    { 
+        if (idx < this->m_dhParams.size()) 
+            this->m_idx = idx; 
+    }
     int GetIdx() { return this->m_idx; }
 
     void Recompute();

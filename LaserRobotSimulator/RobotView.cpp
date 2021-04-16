@@ -9,7 +9,7 @@
 
 #define ANGULAR_VELOCITY        (3.0)
 
-#define DK_SCREEN_OFFSET        (Vector2D<int>(32, 64))
+#define DK_SCREEN_OFFSET        (Vector2D<int>(24, 24))
 #define CONTROLS_OFFSET         (Vector2D<int>(32, 560))
 
 RobotView::RobotView(Robot *robot)
@@ -194,10 +194,11 @@ void RobotView::ShowForwardsDK()
             Simulator::Graphics().SetFGColor(Graphics::COLOR_BLUE);
 
         Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
-            "    Q%d = %+3.3f    Q%d' = %+3.3f %s",
+            "    Q%d = %+3.3f    Q%d' = %+3.3f %s    Th: %+.3f  Alp: %+.3f  A: %+.3f  D:%+.3f",
             (int)i + 1, dhparams[i].GetQ(), 
             (int)i + 1, manualJointSpeeds[i],
-            dhparams[i].Type == JointType::PRISMATIC ? "m/s" : "rad/s");
+            dhparams[i].Type == JointType::PRISMATIC ? "m/s  " : "rad/s",
+            dhparams[i].Theta, dhparams[i].Alpha, dhparams[i].A, dhparams[i].D);
 
         if (i == this->m_robot->GetIdx())
         {
@@ -206,23 +207,23 @@ void RobotView::ShowForwardsDK()
         }
     }
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 100, "End Effector Position");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 600, "End Effector Position");
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 112, 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 612, 
         "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m", 
         endEffectorPosition.x, endEffectorPosition.y, endEffectorPosition.z);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 124, 
-        "    Angular: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> rad", 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 624, 
+        "    Angular: <ax=%+3.3f, ay=%+3.3f, az=%+3.3f> rad", 
         angular.x, angular.y, angular.z);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 148, "End Effector Velocity");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 160, 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 648, "End Effector Velocity");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 660, 
         "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m/s", 
         forwardsResult[0], forwardsResult[1], forwardsResult[2]);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 172, 
-        "    Angular: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> rad/s", 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 672, 
+        "    Angular: <wx=%+3.3f, wy=%+3.3f, wz=%+3.3f> rad/s", 
         forwardsResult[3], forwardsResult[4], forwardsResult[5]);
 }
 
@@ -256,7 +257,7 @@ void RobotView::ShowInverseDK()
 
     std::vector<double> endEffectorVelocity = this->m_robot->GetEndEffectorVelocity();
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 100, "End Effector Position");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 600, "End Effector Position");
 
     Vector3D<double> endEffectorPosition = this->m_robot->GetEndEffectorPosition();
     Vector3D<double> angular;
@@ -264,16 +265,16 @@ void RobotView::ShowInverseDK()
     angular.y = atan2(endEffectorPosition.x, endEffectorPosition.z);
     angular.z = atan2(endEffectorPosition.y, endEffectorPosition.x);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 112, 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 612, 
         "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m", 
         endEffectorPosition.x, endEffectorPosition.y, endEffectorPosition.z);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 124, 
-        "    Angular: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> rad", 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 624, 
+        "    Angular: <ax=%+3.3f, ay=%+3.3f, az=%+3.3f> rad", 
         angular.x, angular.y, angular.z);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 148, "End Effector Velocity");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 160, 
+    Simulator::Graphics().PrintString(offset.x, offset.y + 648, "End Effector Velocity");
+    Simulator::Graphics().PrintString(offset.x, offset.y + 660, 
         "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m/s", 
         endEffectorVelocity[0], endEffectorVelocity[1], endEffectorVelocity[2]);
 }
@@ -381,10 +382,9 @@ void RobotView::ShowJointStatics()
     for (size_t i = 0; i < stubs.size(); i++)
     {
         if (this->m_shown[i])
-        {
             this->RenderJointStaticReaction(prevStub, reactions[i], dhparams[i].Type, i + 1);
-            prevStub = stubs[i];
-        }
+
+        prevStub = stubs[i];
     }
 }
 
@@ -516,7 +516,7 @@ void RobotView::Poll()
 
     this->ShowDK();
     this->ShowStatics();
-    this->ShowControls();
+    // this->ShowControls();
 }
 
 void RobotView::AccumulateScreenOffset(Vector2D<int> mouseDelta)

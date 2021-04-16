@@ -43,6 +43,15 @@ void RobotController::PollChangeIdx()
 
     if (Simulator::Input().KeyTapped(SDLK_6))
         this->m_robot->SelectIdx(5);
+
+    if (Simulator::Input().KeyTapped(SDLK_7))
+        this->m_robot->SelectIdx(6);
+
+    if (Simulator::Input().KeyTapped(SDLK_8))
+        this->m_robot->SelectIdx(7);
+
+    if (Simulator::Input().KeyTapped(SDLK_9))
+        this->m_robot->SelectIdx(8);
 }
 
 void RobotController::PollChangeQ()

@@ -24,7 +24,7 @@ const SDL_Color Graphics::COLOR_GRAY = { 0x80, 0x80, 0x80, 0xFF };
 Graphics::Graphics()
 {
     this->window = SDL_CreateWindow(
-        "Meme Game",
+        "Robot Simulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         Graphics::DEFAULT_WIDTH,
