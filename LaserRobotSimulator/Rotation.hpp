@@ -4,11 +4,12 @@
 #include <iosfwd>
 
 #include "Vector3D.hpp"
+#include "Matrix.hpp"
 
 class Rotation
 {
 private:
-    std::vector<double> m_data;
+    Matrix m_data;
 
 public:
     static Rotation CreateAboutZ(double angle);
@@ -16,14 +17,15 @@ public:
     static Rotation CreateAboutX(double angle);
 
     Rotation();
+    Rotation(Matrix matrix): m_data(matrix.SubMatrix(0, 3, 0, 3)) {}
+
     static Rotation Multiply(Rotation &lhs, Rotation &rhs);
 
     Rotation Transpose();
     Rotation Negate();
     Vector3D<double> Rotate(Vector3D<double> p);
 
-    void Set(int row, int col, double val);
-    double Get(int row, int col);
+    double &At(size_t row, size_t col) { return this->m_data.At(row, col); }
 
     friend std::ostream &operator<<(std::ostream &os, Rotation &transform);
 };

@@ -7,13 +7,7 @@
 
 Jacobian::Jacobian()
 {
-    this->m_data.resize(36);
-
-    for (size_t i = 0; i < 36; i++)
-        this->m_data[i] = 0;
-
-    for (size_t i = 0; i < 6; i++)
-        this->Set(i, i, 1);
+    this->m_data = Matrix(3, 6);
 }
 
 std::vector<double> Jacobian::Multiply(const std::vector<double> &values)
@@ -172,9 +166,7 @@ Jacobian Jacobian::Inverted()
         Jacobian::RowReduceDown(copy, inverse, row);
     }
 
-    if (DebugCheck())
-        std::cout << "row-echelon form:" << std::endl;
-    DebugPrint(copy, inverse);
+    Jacobian::DebugPrint(copy, inverse);
 
     for (size_t rowIter = 0; rowIter < 6; rowIter++)
     {
@@ -239,3 +231,49 @@ double Jacobian::Get(size_t row, size_t col)
 {
     return this->m_data[(row * 6) + col];
 }
+
+void Jacobian::DebugShow(std::string str)
+{
+    if (Jacobian::DebugCheck())
+    {
+        std::cout << " -> " << str << std::endl;
+        for (size_t row = 0; row < 6; row++)
+        {
+            std::cout << "[ ";
+            for (size_t col = 0; col < 6; col++)
+                std::cout << std::fixed << std::setprecision(3) << this->Get(row, col) << " ";
+            std::cout << "]" << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+Jacobian Jacobian::Transposed()
+{
+    Jacobian result;
+
+    for (size_t row = 0; row < 6; row++)
+        for (size_t col = 0; col < 6; col++)
+            result.Set(row, col, this->Get(col, row));
+
+    return result;
+}
+
+std::vector<double> Jacobian::LeastSquaresMultiply(std::vector<double> jointVelocity)
+{
+    Jacobian transpose = this->Transposed();
+    transpose.DebugShow("AT");
+
+    Jacobian ATA = Jacobian::Multiply(transpose, *this);
+    ATA.DebugShow("ATA");
+
+    Jacobian ATAinverted = ATA.Inverted();
+    ATAinverted.DebugShow("ATA Inverted");
+
+    Jacobian ATAinvAT = Jacobian::Multiply(ATAinverted, transpose);
+    ATAinvAT.DebugShow("ATA Inverted * AT");
+
+    return ATAinvAT.Multiply(jointVelocity);
+}
+
+

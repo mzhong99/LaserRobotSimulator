@@ -11,7 +11,9 @@
 #include "Transform.hpp"
 #include "Simulator.hpp"
 
-#include "Jacobian.hpp"
+#include "Matrix.hpp"
+
+#include "ForceMomentCouple.hpp"
 
 enum class JointType { PRISMATIC, REVOLUTE, NONE };
 
@@ -43,6 +45,7 @@ struct CoordinateStub
     Rotation Orientation;
 
     Transform GetTransform() { return Transform(this->Orientation, this->Position); }
+    Vector3D<double> AngularPosition();
 
     CoordinateStub(): Position(0) {};
     CoordinateStub(Vector3D<double> position, Rotation orientation): 
@@ -60,9 +63,11 @@ private:
 
     std::vector<double> m_manualEndEffectorVelocity;
 
-    Jacobian m_jacobian;
+    Matrix m_jacobian;
     bool m_dkForwards = true;
 
+    ForceMomentCouple m_forceMoment;
+    std::vector<double> m_jointForceMoments;
 
     void ShiftedEndEffector(
         size_t qIter, 
@@ -74,6 +79,7 @@ private:
 
     void RecomputeCoordinateStubs();
     void RecomputeJacobian();
+    void RecomputeStatics();
 
 public:
     Robot();
@@ -86,8 +92,12 @@ public:
 
     std::vector<double> GetDKResults();
 
-    void IncrementIdx();
-    void DecrementIdx();
+    void IncrementIdx()
+    { if (this->m_idx + (size_t)1 < this->m_dhParams.size()) this->m_idx++; }
+
+    void DecrementIdx()
+    { if (this->m_idx > 0) this->m_idx--; }
+
     void SelectIdx(int idx) { this->m_idx = idx; }
     int GetIdx() { return this->m_idx; }
 
@@ -99,11 +109,32 @@ public:
     void ToggleDKForwards() { m_dkForwards = !m_dkForwards; }
 
     void AccumulateJointSpeed(double deltaQ) { this->m_manualJointSpeeds[this->m_idx] += deltaQ; }
-    void AccumulateEndEffectorVelocity(double deltaE) 
-    { this->m_manualEndEffectorVelocity[this->m_idx] += deltaE; }
+    void AccumulateEndEffectorVelocity(double deltaE);
+
+    void AccumulateEEForceOrientation(double deltaThetaX, double deltaThetaY)
+    {
+        this->m_forceMoment.AccumulateForceXAngle(deltaThetaX);
+        this->m_forceMoment.AccumulateForceYAngle(deltaThetaY);
+    }
+
+    void AccumulateEEForceMagnitude(double deltaMagnitude)
+    { this->m_forceMoment.AccumulateForceMagnitude(deltaMagnitude); }
+
+    void AccumulateEEMomentOrientation(double deltaThetaX, double deltaThetaY)
+    {
+        this->m_forceMoment.AccumulateMomentXAngle(deltaThetaX);
+        this->m_forceMoment.AccumulateMomentYAngle(deltaThetaY);
+    }
+
+    void AccumulateEEMomentMagnitude(double deltaMagnitude)
+    { this->m_forceMoment.AccumulateMomentMagnitude(deltaMagnitude); }
+
+    Matrix GetEEForceMoment() { return this->m_forceMoment.AsColumn(); }
 
     std::vector<double> GetEndEffectorVelocity() { return this->m_manualEndEffectorVelocity; }
     std::vector<double> GetManualJointSpeeds() { return this->m_manualJointSpeeds; }
+
+    Transform EndEffectorTransform() { return this->m_coordinateStubs.back().GetTransform(); }
 };
 
 class RobotView
@@ -138,6 +169,10 @@ private:
     void ShowControls();
 
     void ShowDK();
+
+    void ShowJointStatics();
+    void ShowEEStatics();
+    void ShowStatics();
 
 public:
     RobotView(Robot *robot);
@@ -185,6 +220,8 @@ private:
     void PollChangeDKMode();
 
     void PollToggleShown();
+
+    void PollControlEEStatics();
 
 public:
     RobotController(Robot *robot, RobotView *view);
