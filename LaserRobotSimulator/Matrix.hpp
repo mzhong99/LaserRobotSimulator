@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstdio>
 
+#include <cstddef>
+
 class Matrix
 {
 private:

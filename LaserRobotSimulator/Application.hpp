@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL.h>
+#include <cstddef>
 #include "SWTimer.hpp"
 #include "DebugOverlay.hpp"
 #include "RobotFwd.hpp"

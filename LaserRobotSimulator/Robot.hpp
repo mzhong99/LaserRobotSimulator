@@ -168,6 +168,7 @@ private:
     double m_pitch;
 
     double m_zoomFactor;
+    bool m_usePerspective;
 
     void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
     void RenderJointStaticReaction(
@@ -209,8 +210,8 @@ public:
 
     void SnapToTopView();
     void SnapToFrontFiew();
-    void SnapToSideView();
-    void SnapToIsometricView();
+    void SnapToSideView() { this->m_yaw = M_PI / 2.0, this->m_pitch = 0; }
+    void SnapToIsometricView() { this->m_yaw = -3.0 * M_PI / 4.0, this->m_pitch = M_PI / 4.0; }
 
     void IncreasePitch();
     void DecreasePitch();
@@ -225,11 +226,14 @@ public:
 
     void ToggleShown(size_t idx);
     void ToggleShowStatics() { this->m_showStatics = !this->m_showStatics; }
-    void ShowAll();
+    void ShowAll() { std::fill(this->m_shown.begin(), this->m_shown.end(), true); }
 
     void ShowSolo(size_t idx);
 
     void Poll();
+
+    bool UsePerspective() { return this->m_usePerspective; }
+    void ToggleUsePerspective() { this->m_usePerspective = !this->m_usePerspective; }
 };
 
 class RobotController

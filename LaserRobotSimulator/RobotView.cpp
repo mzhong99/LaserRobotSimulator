@@ -537,23 +537,6 @@ void RobotView::SnapToFrontFiew()
     this->m_pitch = M_PI / 2.0;
 }
 
-void RobotView::SnapToSideView()
-{
-    this->m_yaw = M_PI / 2.0;
-    this->m_pitch = 0;
-}
-
-void RobotView::SnapToIsometricView()
-{
-    this->m_yaw = -3.0 * M_PI / 4.0;
-    this->m_pitch = M_PI / 4.0;
-}
-
-void RobotView::ShowAll()
-{
-    std::fill(this->m_shown.begin(), this->m_shown.end(), true);
-}
-
 void RobotView::ShowSolo(size_t idx)
 {
     std::fill(this->m_shown.begin(), this->m_shown.end(), false);
