@@ -3,11 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LaserRobotSimulator", "LaserRobotSimulator\LaserRobotSimulator.vcxproj", "{C334B816-4BFD-4984-98C6-C269C7A9EE88}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ECE4704", "LaserRobotSimulator\LaserRobotSimulator.vcxproj", "{C334B816-4BFD-4984-98C6-C269C7A9EE88}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F03DC175-526C-41EA-9DB8-6BBD31A7423D}"
 	ProjectSection(SolutionItems) = preProject
 		Design.txt = Design.txt
+		README.txt = README.txt
 	EndProjectSection
 EndProject
 Global
