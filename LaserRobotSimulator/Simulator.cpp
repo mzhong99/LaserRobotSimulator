@@ -25,7 +25,7 @@
 /**************************************************************************************************/
 Input *Simulator::input;
 Graphics *Simulator::graphics;
-Application *Simulator::application;
+App *Simulator::application;
 
 void Simulator::Initialize()
 {
@@ -39,7 +39,7 @@ void Simulator::Initialize()
     IMG_Init(IMG_INIT_PNG);
     SDL_Log("IMG Extension Initialized.");
 
-    Simulator::application = new ::Application();
+    Simulator::application = new ::App();
     Simulator::graphics = new ::Graphics();
     Simulator::input = new ::Input();
     SDL_Log("System Initialized.");
@@ -62,7 +62,7 @@ void Simulator::Teardown()
     SDL_Quit();
 }
 
-Application &Simulator::Application()
+App &Simulator::App()
 {
     return *Simulator::application;
 }
@@ -85,8 +85,8 @@ int main(int argc, char *argv[])
 {
     Simulator::Initialize();
 
-    while (!Simulator::Application().Exited())
-        Simulator::Application().Poll();
+    while (!Simulator::App().Exited())
+        Simulator::App().Poll();
 
     Simulator::Teardown();
 

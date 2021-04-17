@@ -8,7 +8,7 @@
 
 #define FRAMERATE_CAP   60
 
-class Application
+class App
 {
 private:
     DebugOverlay debugOverlay;
@@ -25,14 +25,15 @@ private:
     void ReadSystemEvents();
 
 public:
-    Application();
-    ~Application();
+    App();
+    ~App();
 
-    Application(const Application &) = delete;
+    App(const App &) = delete;
 
     void Poll();
 
     bool Exited() { return this->exited; }
     uint32_t DeltaTimeMS() { return this->deltaTime_ms; }
+    double DetaTimeSeconds() { return (double)this->DeltaTimeMS() / 1000.0; }
 };
 

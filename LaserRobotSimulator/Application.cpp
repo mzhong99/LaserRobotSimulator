@@ -2,7 +2,7 @@
 #include "Simulator.hpp"
 #include "Robot.hpp"
 
-Application::Application()
+App::App()
 {
     this->deltaTimer = SWTimer(0);
     this->debugOverlay = DebugOverlay();
@@ -17,14 +17,14 @@ Application::Application()
     this->m_controller = new RobotController(this->m_robot, this->m_view);
 }
 
-Application::~Application()
+App::~App()
 {
     delete this->m_robot;
     delete this->m_view;
     delete this->m_controller;
 }
 
-void Application::ReadSystemEvents()
+void App::ReadSystemEvents()
 {
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0)
@@ -61,7 +61,7 @@ void Application::ReadSystemEvents()
     }
 }
 
-void Application::Poll()
+void App::Poll()
 {
     this->ReadSystemEvents();
     this->debugOverlay.Poll();

@@ -14,6 +14,7 @@
 #include "Matrix.hpp"
 
 #include "ForceMomentCouple.hpp"
+#include "Camera.hpp"
 
 enum class JointType { PRISMATIC, REVOLUTE, NONE };
 
@@ -45,7 +46,6 @@ struct CoordinateStub
     Rotation Orientation;
 
     Transform GetTransform() { return Transform(this->Orientation, this->Position); }
-    Vector3D<double> AngularPosition();
 
     CoordinateStub(): Position(0) {};
     CoordinateStub(Vector3D<double> position, Rotation orientation): 
@@ -73,10 +73,7 @@ private:
 
     std::vector<double> m_jointForceMoments;
 
-    void ShiftedEndEffector(
-        size_t qIter, 
-        Vector3D<double> &linearOut, 
-        Vector3D<double> &angularOut);
+    Vector3D<double> ShiftedEndEffector(size_t qIter);
 
     std::vector<double> GetForwardDKResults();
     std::vector<double> GetInverseDKResults();
@@ -88,6 +85,7 @@ private:
 public:
     Robot();
 
+    size_t NumJoints() { return this->m_dhParams.size(); }
     DHParam &GetJoint() { return m_dhParams[this->m_idx]; }
     CoordinateStub &GetCoordinateStub() { return m_coordinateStubs[this->m_idx]; }
 
@@ -162,13 +160,7 @@ class RobotView
 private:
     Robot *m_robot;
 
-    Vector2D<double> m_screenOffset2D;
-
-    double m_yaw;
-    double m_pitch;
-
-    double m_zoomFactor;
-    bool m_usePerspective;
+    Camera m_camera;
 
     void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
     void RenderJointStaticReaction(
@@ -176,10 +168,6 @@ private:
 
     bool m_showStatics;
     std::vector<bool> m_shown;
-
-    Vector2D<double> WorldToScreen(Vector3D<double> worldVector);
-
-    Rotation GetSphericalRotation();
 
     void ComputeScreenCoordinateArrows(
         CoordinateStub &stub, 
@@ -205,24 +193,7 @@ public:
     RobotView(Robot *robot);
     RobotView(const RobotView &) = delete;
 
-    void AccumulatePitch(double deltaPitch);
-    void AccumulateYaw(double deltaYaw);
-
-    void SnapToTopView();
-    void SnapToFrontFiew();
-    void SnapToSideView() { this->m_yaw = M_PI / 2.0, this->m_pitch = 0; }
-    void SnapToIsometricView() { this->m_yaw = -3.0 * M_PI / 4.0, this->m_pitch = M_PI / 4.0; }
-
-    void IncreasePitch();
-    void DecreasePitch();
-
-    void IncreaseYaw();
-    void DecreaseYaw();
-
-    void AccumulateScreenOffset(Vector2D<int> mouseDelta);
-
-    void ZoomIn();
-    void ZoomOut();
+    Camera &Camera() { return m_camera; }
 
     void ToggleShown(size_t idx);
     void ToggleShowStatics() { this->m_showStatics = !this->m_showStatics; }
@@ -231,9 +202,6 @@ public:
     void ShowSolo(size_t idx);
 
     void Poll();
-
-    bool UsePerspective() { return this->m_usePerspective; }
-    void ToggleUsePerspective() { this->m_usePerspective = !this->m_usePerspective; }
 };
 
 class RobotController

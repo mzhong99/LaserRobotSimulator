@@ -65,6 +65,7 @@ public:
     void DrawLine(Vector2D<double> &p1, Vector2D<double> &p2);
 
     void DrawArrow(Vector2D<double> &tail, Vector2D<double> &head, const char *fmt = "", ...);
+    void DrawArrow(Vector2D<double> &tail, Vector2D<double> &head, const char *fmt, va_list args);
 
     void PrintString(int x, int y, const char *fmt, ...);
 

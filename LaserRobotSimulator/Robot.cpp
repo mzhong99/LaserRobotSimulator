@@ -69,17 +69,6 @@ void DHParam::SetQ(double val)
     }
 }
 
-Vector3D<double> CoordinateStub::AngularPosition()
-{
-    Vector3D<double> angular;
-
-    angular.x = atan2(this->Position.z, this->Position.y);
-    angular.y = atan2(this->Position.x, this->Position.z);
-    angular.z = atan2(this->Position.y, this->Position.x);
-
-    return angular;
-}
-
 /**************************************************************************************************/
 /* Model ---------------------------------------------------------------------------------------- */
 /**************************************************************************************************/
@@ -92,10 +81,11 @@ void Robot::AccumulateEndEffectorVelocity(double deltaE)
 Robot::Robot()
 {
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
-    m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
+    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
-    m_dhParams.push_back(DHParam::CreateRevolute(-M_PI / 2.0, 0, 0));
+    m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
+    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(0, 0, 0));
 
     m_coordinateStubs.resize(m_dhParams.size());
@@ -106,7 +96,7 @@ Robot::Robot()
     m_manualEndEffectorVelocity.resize(m_jacobian.Rows());
     m_isFreeVariable.resize(m_dhParams.size());
 
-    m_manualEndEffectorVelocity = { 1.0, 2.0, 3.0 };
+    m_manualEndEffectorVelocity = { 1.0, 2.0, 3.0, -1.0, -2.0, -3.0 };
 }
 
 void Robot::RecomputeCoordinateStubs()
@@ -129,10 +119,7 @@ void Robot::RecomputeCoordinateStubs()
     }
 }
 
-void Robot::ShiftedEndEffector(
-    size_t qIter,
-    Vector3D<double> &linearOut,
-    Vector3D<double> &angularOut)
+Vector3D<double> Robot::ShiftedEndEffector(size_t qIter)
 {
     Transform cumulative = Transform();
 
@@ -141,65 +128,38 @@ void Robot::ShiftedEndEffector(
         DHParam dhparam = m_dhParams[i];
 
         if (i == qIter)
-        {
-            switch (dhparam.Type)
-            {
-                case JointType::REVOLUTE  : dhparam.Theta += DIFFERENTIAL_DELTA; break; 
-                case JointType::PRISMATIC : dhparam.D     += DIFFERENTIAL_DELTA; break;
-                default: break;
-            }
-        }
+            dhparam.SetQ(dhparam.GetQ() + DIFFERENTIAL_DELTA);
 
         Transform transform = Transform(dhparam.Theta, dhparam.Alpha, dhparam.A, dhparam.D);
-        if (i == qIter && qIter == 5)
-        {
-            if (Simulator::Input().KeyTapped(SDLK_2) && Simulator::Input().KeyPressed(SDLK_LCTRL))
-            {
-                std::cout << std::fixed << std::setprecision(8);
-                std::cout << "Last Transform:" << std::endl;
-                for (int row = 0; row < 4; row++)
-                {
-                    std::cout << "[ ";
-                    for (int col = 0; col < 4; col++)
-                        std::cout << transform.At(row, col) << " ";
-                    std::cout << "]" << std::endl;
-                }
-
-                Transform transform = Transform(dhparam.Theta, dhparam.Alpha, dhparam.A, dhparam.D);
-            }
-        }
-
         cumulative = Transform::Multiply(cumulative, transform);
     }
 
-    linearOut = Vector3D<double>(cumulative.GetDisplacement());
-    angularOut = Vector3D<double>();
-
-    angularOut.x = atan2(linearOut.z, linearOut.y);
-    angularOut.y = atan2(linearOut.x, linearOut.z);
-    angularOut.z = atan2(linearOut.y, linearOut.x);
+    return cumulative.GetDisplacement();
 }
 
 void Robot::RecomputeJacobian()
 {
     for (size_t qIter = 0; qIter < this->m_dhParams.size(); qIter++)
     {
-        Vector3D<double> linearPlusH, angularPlusH;
-        this->ShiftedEndEffector(qIter, linearPlusH, angularPlusH);
+        Vector3D<double> linearPlusH = this->ShiftedEndEffector(qIter);
 
         Vector3D<double> linear = this->m_coordinateStubs.back().Position;
-        Vector3D<double> linearDelta = (linearPlusH - linear) * (1.0 / DIFFERENTIAL_DELTA);
+        Vector3D<double> linearV = (linearPlusH - linear) * (1.0 / DIFFERENTIAL_DELTA);
 
-        Vector3D<double> angular = this->m_coordinateStubs.back().AngularPosition();
-        Vector3D<double> angularDelta = (angularPlusH - angular) * (1.0 / DIFFERENTIAL_DELTA);
+        Vector3D<double> angularV = Vector3D<double>(0);
+        if (this->m_dhParams[qIter].Type == JointType::REVOLUTE)
+            if (qIter == 0)
+                angularV = Vector3D<double>(0, 0, 1);
+            else
+                angularV = this->m_coordinateStubs[qIter].Orientation.GetColumn(2);
 
-        this->m_jacobian.At(0, qIter) = linearDelta.x;
-        this->m_jacobian.At(1, qIter) = linearDelta.y;
-        this->m_jacobian.At(2, qIter) = linearDelta.z;
+        this->m_jacobian.At(0, qIter) = linearV.x;
+        this->m_jacobian.At(1, qIter) = linearV.y;
+        this->m_jacobian.At(2, qIter) = linearV.z;
 
-        this->m_jacobian.At(3, qIter) = angularDelta.x;
-        this->m_jacobian.At(4, qIter) = angularDelta.y;
-        this->m_jacobian.At(5, qIter) = angularDelta.z;
+        this->m_jacobian.At(3, qIter) = angularV.x;
+        this->m_jacobian.At(4, qIter) = angularV.y;
+        this->m_jacobian.At(5, qIter) = angularV.z;
     }
 }
 
@@ -237,27 +197,15 @@ std::vector<double> Robot::GetForwardDKResults()
 std::vector<double> Robot::GetInverseDKResults()
 {
     Matrix endEffectorFull = Matrix::CreateCol(this->m_manualEndEffectorVelocity);
-    Matrix endEffectorLinear = endEffectorFull.SubMatrix(0, 3, 0, 1);
-
-    Matrix jacobianLinear = this->m_jacobian.SubMatrix(0, 3, 0, m_jacobian.Cols());
-    Matrix jacobianAugmented = Matrix::LRJoin(jacobianLinear, endEffectorLinear);
+    Matrix jacobianAugmented = Matrix::LRJoin(m_jacobian, endEffectorFull);
 
     jacobianAugmented.GaussJordanEliminate();
 
-    if (Simulator::Input().KeyTapped(SDLK_j))
-    {
-        std::cout << "Jacobian:" << std::endl << m_jacobian << std::endl;
-        std::cout << "Jacobian Linear:" << std::endl << jacobianLinear << std::endl;
-        std::cout << "Jacobian Augment:" << std::endl << jacobianAugmented << std::endl;
-    }
-
     std::vector<double> results;
+    results.resize(this->NumJoints(), 0.0);
+    m_isFreeVariable.resize(this->NumJoints());
 
-    results.resize(this->m_dhParams.size(), 0.0);
-    m_isFreeVariable.resize(this->m_dhParams.size(), true);
-
-    for (size_t i = 0; i < m_isFreeVariable.size(); i++)
-        m_isFreeVariable[i] = true;
+    std::fill(m_isFreeVariable.begin(), m_isFreeVariable.end(), true);
 
     for (size_t row = 0; row < jacobianAugmented.Rows(); row++)
     {

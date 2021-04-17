@@ -25,6 +25,9 @@ public:
     Rotation Negate();
     Vector3D<double> Rotate(Vector3D<double> p);
 
+    Vector3D<double> GetColumn(size_t col)
+    { return Vector3D<double>(m_data.At(0, col), m_data.At(1, col), m_data.At(2, col)); }
+
     double &At(size_t row, size_t col) { return this->m_data.At(row, col); }
 
     friend std::ostream &operator<<(std::ostream &os, Rotation &transform);

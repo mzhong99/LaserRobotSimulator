@@ -89,7 +89,7 @@ Matrix Matrix::Inverted()
     Matrix augmented = Matrix::LRJoin(*this, identity);
     augmented.GaussJordanEliminate();
 
-    return augmented.SubMatrix(this->Rows(), augmented.Rows(), this->Cols(), augmented.Cols());
+    return augmented.SubMatrix(0, this->Rows(), this->Cols(), augmented.Cols());
 }
 
 Matrix Matrix::Transposed()
@@ -112,7 +112,7 @@ Matrix Matrix::SubMatrix(size_t rowLow, size_t rowHigh, size_t colLow, size_t co
 
     for (size_t row = rowLow; row < rowHigh; row++)
         for (size_t col = colLow; col < colHigh; col++)
-            submatrix.At(row, col) = this->At(rowLow + row, colLow + col);
+            submatrix.At(row - rowLow, col - colLow) = this->At(row, col);
 
     return submatrix;
 }
@@ -182,6 +182,68 @@ void Matrix::NormalizeRowToElement(size_t baseRow, size_t row, size_t col)
     double value = this->At(row, col);
     for (size_t i = 0; i < this->Cols(); i++)
         this->At(baseRow, i) /= value;
+}
+
+Matrix Matrix::GetRow(size_t row)
+{
+    if (row >= this->Rows())
+        return Matrix();
+
+    Matrix copy = Matrix(row, this->Cols());
+    for (size_t col = 0; col < this->Cols(); col++)
+        copy.At(0, col) = this->At(row, col);
+
+    return copy;
+}
+
+Matrix Matrix::GetCol(size_t col)
+{
+    if (col >= this->Cols())
+        return Matrix();
+
+    Matrix copy = Matrix(this->Rows(), col);
+    for (size_t row = 0; row < this->Rows(); row++)
+        copy.At(row, 0) = this->At(row, col);
+
+    return copy;
+}
+
+Matrix Matrix::FromVector3D(Vector3D<double> vec3D, size_t length, double fillValue)
+{
+    Matrix matrix = Matrix(length, 1);
+
+    if (length > 0)
+        matrix.At(0, 0) = vec3D.x;
+
+    if (length > 1)
+        matrix.At(1, 0) = vec3D.y;
+
+    if (length > 2)
+        matrix.At(2, 0) = vec3D.z;
+
+    for (size_t i = 3; i < length; i++)
+        matrix.m_data[i] = fillValue;
+
+    return matrix;
+}
+
+Vector3D<double> Matrix::ToVector3D()
+{
+    if (this->Rows() > 1 && this->Cols() > 1)
+        return Vector3D<double>();
+
+    Vector3D<double> answer = Vector3D<double>(0);
+
+    if (this->m_data.size() > 0)
+        answer.x = this->m_data[0];
+
+    if (this->m_data.size() > 1)
+        answer.y = this->m_data[1];
+
+    if (this->m_data.size() > 1)
+        answer.z = this->m_data[2];
+
+    return answer;
 }
 
 void Matrix::RowReduceDown(size_t baseRow)

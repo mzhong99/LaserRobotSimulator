@@ -9,6 +9,8 @@
 
 #include <cstddef>
 
+#include "Vector3D.hpp"
+
 class Matrix
 {
 private:
@@ -44,10 +46,16 @@ public:
     static Matrix Multiply(Matrix &lhs, Matrix &rhs);
     static Matrix LRJoin(Matrix &lhs, Matrix &rhs);
 
+    static Matrix FromVector3D(Vector3D<double> vec3D, size_t length = 3, double fillValue = 0);
+    Vector3D<double> ToVector3D();
+
     Matrix Inverted();
     Matrix Transposed();
 
     Matrix Multiply(double scalar);
+
+    Matrix GetRow(size_t row);
+    Matrix GetCol(size_t col);
 
     void GaussJordanEliminate();
     size_t GetHeadPosition(size_t row);

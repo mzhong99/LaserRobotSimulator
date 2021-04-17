@@ -155,7 +155,8 @@ Vector2D<double> Graphics::LogicToScreen2D(Vector2D<double> p)
     return result;
 }
 
-void Graphics::DrawArrow(Vector2D<double> &tail, Vector2D<double> &head, const char *fmt, ...)
+void Graphics::DrawArrow(
+    Vector2D<double> &tail, Vector2D<double> &head, const char *fmt, va_list args)
 {
     if (fmt == NULL)
         fmt = "";
@@ -180,13 +181,18 @@ void Graphics::DrawArrow(Vector2D<double> &tail, Vector2D<double> &head, const c
     Vector2D<double> labelOffset = (head - tail) * TIP_LABEL_LENGTH;
     Vector2D<double> label = head + labelOffset;
 
-    if (fmt[0])
-    {
-        va_list args;
-        va_start(args, fmt);
-        this->PrintStringVAList((int)label.x, (int)label.y, fmt, args);
-        va_end(args);
-    }
+    this->PrintStringVAList((int)label.x, (int)label.y, fmt, args);
+}
+
+void Graphics::DrawArrow(Vector2D<double> &tail, Vector2D<double> &head, const char *fmt, ...)
+{
+    if (fmt == NULL)
+        fmt = "";
+
+    va_list args;
+    va_start(args, fmt);
+    this->DrawArrow(tail, head, fmt, args);
+    va_end(args);
 }
 
 void Graphics::DrawCircle(Vector2D<double> location, double radius)

@@ -63,7 +63,7 @@ void RobotController::PollChangeQ()
     if (Simulator::Input().KeyPressed(SDLK_DOWN))
         scaler -= 1.0;
 
-    double deltaTimeSeconds = Simulator::Application().DeltaTimeMS() / 1000.0;
+    double deltaTimeSeconds = Simulator::App().DeltaTimeMS() / 1000.0;
     double increment = scaler * INCREMENT_VELOCITY * deltaTimeSeconds;
     double oldQ = this->m_robot->GetJoint().GetQ();
 
@@ -103,48 +103,45 @@ void RobotController::PollChangeEndEffector()
 void RobotController::PollChangeCamera()
 {
     if (Simulator::Input().KeyPressed(SDLK_w))
-        this->m_view->IncreasePitch();
+        this->m_view->Camera().AccumulateForwards(1.0);
 
     if (Simulator::Input().KeyPressed(SDLK_s))
-        this->m_view->DecreasePitch();
+        this->m_view->Camera().AccumulateForwards(-1.0);
 
     if (Simulator::Input().KeyPressed(SDLK_a))
-        this->m_view->IncreaseYaw();
+        this->m_view->Camera().AccumulateSideways(-1.0);
 
     if (Simulator::Input().KeyPressed(SDLK_d))
-        this->m_view->DecreaseYaw();
+        this->m_view->Camera().AccumulateSideways(1.0);
 
-    if (Simulator::Input().KeyPressed(SDLK_z))
-        this->m_view->SnapToTopView();
-
-    if (Simulator::Input().KeyPressed(SDLK_x))
-        this->m_view->SnapToFrontFiew();
+    if (Simulator::Input().KeyPressed(SDLK_SPACE))
+        this->m_view->Camera().AccumulateUpDown(1.0);
 
     if (Simulator::Input().KeyPressed(SDLK_c))
-        this->m_view->SnapToSideView();
+        this->m_view->Camera().AccumulateUpDown(-1.0);
 
-    if (Simulator::Input().KeyPressed(SDLK_v))
-        this->m_view->SnapToIsometricView();
+    if (Simulator::Input().KeyTapped(SDLK_p))
+        this->m_view->Camera().ToggleUsePerspective();
 
     if (Simulator::Input().KeyPressed(SDLK_EQUALS))
-        this->m_view->ZoomIn();
+        this->m_view->Camera().ZoomIn();
 
     if (Simulator::Input().KeyPressed(SDLK_MINUS))
-        this->m_view->ZoomOut();
+        this->m_view->Camera().ZoomOut();
 
     if (!Simulator::Input().KeyPressed(SDLK_LCTRL) && !Simulator::Input().KeyPressed(SDLK_LSHIFT))
     {
         if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_view->AccumulateScreenOffset(motion);
+            this->m_view->Camera().AccumulateScreenOffset(motion);
         }
 
         if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_view->AccumulatePitch(-1.0 * motion.y * LONGITUDE_SENSITIVITY);
-            this->m_view->AccumulateYaw(motion.x * LATITUDE_SENSITIVITY);
+            this->m_view->Camera().AccumulateXRotation(-1.0 * motion.y * LONGITUDE_SENSITIVITY);
+            this->m_view->Camera().AccumulateYRotation(motion.x * LATITUDE_SENSITIVITY);
         }
     }
 }

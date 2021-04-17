@@ -23,7 +23,7 @@ void DebugOverlay::Poll()
     {
         mousePos = Simulator::Input().MouseMotion();
 
-        Simulator::Graphics().PrintString(0, 0, " DT: %i", Simulator::Application().DeltaTimeMS());
+        Simulator::Graphics().PrintString(0, 0, " DT: %i", Simulator::App().DeltaTimeMS());
         Simulator::Graphics().PrintString(0, 12, " Cursor: %d %d", mousePos.X(), mousePos.Y());
 
         Simulator::Graphics().PrintString(0, 24, " M123: %d %d %d",

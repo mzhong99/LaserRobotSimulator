@@ -8,7 +8,7 @@
 class Transform
 {
 private:
-    Matrix m_data;
+    Matrix m_data = Matrix::Identity(4);
 
 public:
     Transform(): m_data(Matrix::Identity(4)) {}
