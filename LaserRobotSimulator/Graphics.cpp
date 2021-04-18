@@ -12,11 +12,13 @@
 const SDL_Color Graphics::COLOR_BLACK = { 0x00, 0x00, 0x00, 0xFF };
 const SDL_Color Graphics::COLOR_WHITE = { 0xFF, 0xFF, 0xFF, 0xFF };
 const SDL_Color Graphics::COLOR_RED = { 0xFF, 0x00, 0x00, 0xFF };
+const SDL_Color Graphics::COLOR_ORANGE = { 255, 157, 0, 0xFF };
 const SDL_Color Graphics::COLOR_GREEN = { 0x00, 0xA0, 0x00, 0xFF };
 const SDL_Color Graphics::COLOR_YELLOW = { 0xF0, 0xF0, 0x00, 0xFF };
 const SDL_Color Graphics::COLOR_BLUE = { 0xA0, 0xA0, 0xFF, 0xFF };
 const SDL_Color Graphics::COLOR_CYAN = { 0x00, 0xFF, 0xFF, 0xFF };
 const SDL_Color Graphics::COLOR_GRAY = { 0x80, 0x80, 0x80, 0xFF };
+const SDL_Color Graphics::COLOR_LIGHTGRAY = { 0xB0, 0xB0, 0xB0, 0xFF };
 
 #define TIP_LENGTH  (0.08)
 #define TIP_LABEL_LENGTH  (0.05)

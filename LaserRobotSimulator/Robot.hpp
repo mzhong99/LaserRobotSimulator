@@ -14,9 +14,11 @@
 #include "Matrix.hpp"
 
 #include "ForceMomentCouple.hpp"
+#include "VelocityCouple.hpp"
 #include "Camera.hpp"
 
 enum class JointType { PRISMATIC, REVOLUTE, NONE };
+enum class SimulationMode { NONE, STATICS, DIFFERENTIAL_KINEMATICS, VIEW_ALL };
 
 struct DHParam
 {
@@ -57,15 +59,19 @@ class Robot
 private:
     std::vector<DHParam> m_dhParams;
     std::vector<CoordinateStub> m_coordinateStubs;
+    Vector3D<double> m_eeAngularPosition;
+
     std::vector<double> m_manualJointSpeeds;
+
+    SimulationMode m_simulationMode;
 
     int m_idx = 0;
 
-    std::vector<double> m_manualEndEffectorVelocity;
+    VelocityCouple m_eeVelocityCouple;
     std::vector<bool> m_isFreeVariable;
 
     Matrix m_jacobian;
-    bool m_dkForwards = true;
+    bool m_simForwards = true;
 
     ForceMomentCouple m_forceMoment;
     Vector3D<double> m_baseForceEquivalent;
@@ -75,15 +81,16 @@ private:
 
     Vector3D<double> ShiftedEndEffector(size_t qIter);
 
-    std::vector<double> GetForwardDKResults();
-    std::vector<double> GetInverseDKResults();
-
     void RecomputeCoordinateStubs();
     void RecomputeJacobian();
+
     void RecomputeStatics();
 
 public:
     Robot();
+
+    SimulationMode SimMode() { return m_simulationMode; }
+    void SelectSimMode(SimulationMode mode) { m_simulationMode = mode; }
 
     size_t NumJoints() { return this->m_dhParams.size(); }
     DHParam &GetJoint() { return m_dhParams[this->m_idx]; }
@@ -92,7 +99,8 @@ public:
     std::vector<CoordinateStub> GetAllStubs() { return this->m_coordinateStubs; }
     std::vector<DHParam> GetAllDHParams() { return this->m_dhParams; }
 
-    std::vector<double> GetDKResults();
+    std::vector<double> GetForwardDKResults();
+    std::vector<double> GetInverseDKResults();
 
     void IncrementIdx()
     { if (this->m_idx + (size_t)1 < this->m_dhParams.size()) this->m_idx++; }
@@ -110,17 +118,34 @@ public:
     void Recompute();
 
     Vector3D<double> GetEndEffectorPosition() { return m_coordinateStubs.back().Position; }
+    Vector3D<double> GetEndEffectorAngularPosition() { return m_eeAngularPosition; }
     
-    bool IsDKForwards() { return m_dkForwards; }
-    void ToggleDKForwards() { m_dkForwards = !m_dkForwards; }
+    bool IsSimForwards() { return m_simForwards; }
+    void ToggleSimForwards() { m_simForwards = !m_simForwards; }
 
     void AccumulateJointSpeed(double deltaQ) 
-    { 
-        if (this->IsDKForwards() || this->m_isFreeVariable[this->m_idx])
+    {
+        if (this->IsSimForwards() || this->m_isFreeVariable[this->m_idx])
             this->m_manualJointSpeeds[this->m_idx] += deltaQ; 
     }
 
-    void AccumulateEndEffectorVelocity(double deltaE);
+    void AccumulateEELinearOrientation(double deltaThetaX, double deltaThetaY)
+    {
+        m_eeVelocityCouple.Linear().AccumulateXAngle(deltaThetaX);
+        m_eeVelocityCouple.Linear().AccumulateYAngle(deltaThetaY);
+    }
+
+    void AccumulateEELinearMagnitude(double deltaMagnitude)
+    { m_eeVelocityCouple.Linear().AccumulateMagnitude(deltaMagnitude); }
+
+    void AccumulateEEAngularMagnitude(double deltaMagnitude)
+    { m_eeVelocityCouple.Angular().AccumulateMagnitude(deltaMagnitude); }
+
+    void AccumulateEEAngularOrientation(double deltaThetaX, double deltaThetaY)
+    {
+        m_eeVelocityCouple.Angular().AccumulateXAngle(deltaThetaX);
+        m_eeVelocityCouple.Angular().AccumulateYAngle(deltaThetaY);
+    }
 
     void AccumulateEEForceOrientation(double deltaThetaX, double deltaThetaY)
     {
@@ -143,7 +168,7 @@ public:
     /* Represented in coordinates of the end effector */
     Matrix GetEEForceMoment();
 
-    std::vector<double> GetEndEffectorVelocity() { return this->m_manualEndEffectorVelocity; }
+    VelocityCouple GetEndEffectorVelocity() { return this->m_eeVelocityCouple; }
     std::vector<double> GetManualJointSpeeds() { return this->m_manualJointSpeeds; }
 
     Transform EndEffectorTransform() { return this->m_coordinateStubs.back().GetTransform(); }
@@ -163,17 +188,20 @@ private:
     Camera m_camera;
 
     void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
+
+    void RenderJointVelocity(
+        CoordinateStub &stub, double velocity, JointType jointType, int frameNumber);
     void RenderJointStaticReaction(
         CoordinateStub &stub, double reaction, JointType jointType, int frameNumber);
 
-    bool m_showStatics;
     std::vector<bool> m_shown;
+
+    void ShowJointTable();
+
+    void ShowEEPosition();
 
     void ShowForwardsDK();
     void ShowInverseDK();
-
-    void ShowControls();
-
     void ShowDK();
 
     void ShowEEStatics();
@@ -189,7 +217,6 @@ public:
     Camera &Camera() { return m_camera; }
 
     void ToggleShown(size_t idx);
-    void ToggleShowStatics() { this->m_showStatics = !this->m_showStatics; }
     void ShowAll() { std::fill(this->m_shown.begin(), this->m_shown.end(), true); }
 
     void ShowSolo(size_t idx);
@@ -206,14 +233,20 @@ private:
     void PollChangeIdx();
 
     void PollChangeQ();
+
+    void PollSelectSimMode();
+    void PollToggleSimForwards();
+
+    void PollChangeForwardsDK();
+    void PollChangeInverseDK();
+
+    void PollChangeDK();
     void PollChangeEndEffector();
 
     void PollChangeCamera();
-    void PollChangeDKMode();
-
     void PollToggleShown();
 
-    void PollControlEEStatics();
+    void PollChangeInverseStatics();
 
 public:
     RobotController(Robot *robot, RobotView *view);

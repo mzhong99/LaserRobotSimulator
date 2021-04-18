@@ -342,6 +342,46 @@ void Matrix::GaussJordanEliminate()
     }
 }
 
+std::vector<double> Matrix::RREFWithFreeVariables(
+    const std::vector<double> &freeVars, std::vector<bool> &isFreeVarOut)
+{
+    if (this->Cols() != freeVars.size() + 1)
+        return std::vector<double>();
+
+    isFreeVarOut = std::vector<bool>(freeVars.size(), true);
+    std::vector<double> results = std::vector<double>(freeVars.size(), 0.0);
+
+    this->GaussJordanEliminate();
+
+    for (size_t row = 0; row < this->Rows(); row++)
+    {
+        size_t freeCol = this->GetHeadPosition(row);
+
+        /* Matrix is singular when there's a pivot in the answer column */
+        if (freeCol + 1 == this->Cols())
+            return std::vector<double>();
+
+        if (freeCol < isFreeVarOut.size())
+            isFreeVarOut[freeCol] = false;
+    }
+
+    for (size_t row = 0; row < this->Rows(); row++)
+    {
+        results[row] = this->At(row, this->Cols() - 1);
+        for (size_t col = 0; col < this->Cols() - 1; col++)
+        {
+            if (isFreeVarOut[col])
+                results[row] -= this->At(row, col) * freeVars[col];
+        }
+    }
+
+    for (size_t col = 0; col < results.size(); col++)
+        if (isFreeVarOut[col])
+            results[col] = freeVars[col];
+
+    return results;
+}
+
 bool Matrix::DebugCheck()
 {
     return Simulator::Input().KeyTapped(SDLK_m);

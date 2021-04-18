@@ -11,6 +11,7 @@ Camera::Camera()
     m_usePerspective = true;
 
     m_isoZoomFactor = DEFAULT_ISO_ZOOM_FACTOR;
+    m_perspectiveZoomFactor = DEFAULT_PERSPECTIVE_ZOOM_FACTOR;
 }
 
 void Camera::AccumulateXRotation(double delta)
@@ -75,7 +76,7 @@ Vector2D<double> Camera::PerspectiveWorldToScreen(Vector3D<double> pointInWorld)
     double xw = pointInBase.x;
     double yw = pointInBase.y;
 
-    double thetaFOV = M_PI * (75.0 / 180.0);
+    double thetaFOV = M_PI * (pow(75.0, m_perspectiveZoomFactor) / 180.0);
     double tangent = tan(thetaFOV / 2.0);
 
     double xv = xw / zw;
@@ -105,7 +106,7 @@ Vector2D<double> Camera::WorldToScreen(Vector3D<double> pointInWorld)
 }
 
 void Camera::DrawArrow(
-    Vector3D<double> &tailInWorld, Vector3D<double> &headInWorld, const char *fmt, ...)
+    Vector3D<double> tailInWorld, Vector3D<double> headInWorld, const char *fmt, ...)
 {
     Vector3D<double> tailInBase = m_worldToBase.TransformPoint(tailInWorld);
     Vector3D<double> headInBase = m_worldToBase.TransformPoint(headInWorld);
@@ -122,3 +123,23 @@ void Camera::DrawArrow(
     va_end(args);
 }
 
+
+void Camera::DrawArrowFromOffset(
+    Vector3D<double> origin, Vector3D<double> direction, const char *fmt, ...)
+{
+    Vector3D<double> head = origin + direction;
+
+    Vector3D<double> tailInBase = m_worldToBase.TransformPoint(origin);
+    Vector3D<double> headInBase = m_worldToBase.TransformPoint(head);
+
+    if ((tailInBase.z < 0.0 || headInBase.z < 0.0) && this->m_usePerspective)
+        return;
+
+    Vector2D<double> tailInScreen = this->WorldToScreen(origin);
+    Vector2D<double> headInScreen = this->WorldToScreen(head);
+
+    va_list args;
+    va_start(args, fmt);
+    Simulator::Graphics().DrawArrow(tailInScreen, headInScreen, fmt, args);
+    va_end(args);
+}

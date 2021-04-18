@@ -14,61 +14,29 @@ RobotView::RobotView(Robot *robot)
     m_robot = robot;
 
     m_shown.resize(m_robot->NumJoints(), true);
-    m_showStatics = true;
 }
 
-// void RobotView::ComputeScreenCoordinateArrows(
-//     CoordinateStub &stub,
-//     Vector2D<double> &originOut,
-//     Vector2D<double> &xHat2DOut,
-//     Vector2D<double> &yHat2DOut,
-//     Vector2D<double> &zHat2DOut)
-// {
-//     Transform stubToBase = stub.GetTransform();
-// 
-//     Vector3D<double> origin3D = stubToBase.GetColumn(3);
-// 
-//     Vector3D<double> offsetXHat3D = stubToBase.GetColumn(0);
-//     Vector3D<double> offsetYHat3D = stubToBase.GetColumn(1);
-//     Vector3D<double> offsetZHat3D = stubToBase.GetColumn(2);
-// 
-//     Vector3D<double> pointXHat3D = origin3D + offsetXHat3D;
-//     Vector3D<double> pointYHat3D = origin3D + offsetYHat3D;
-//     Vector3D<double> pointZHat3D = origin3D + offsetZHat3D;
-// 
-//     originOut = m_camera.WorldToScreen(origin3D);
-//     xHat2DOut = m_camera.WorldToScreen(pointXHat3D);
-//     yHat2DOut = m_camera.WorldToScreen(pointYHat3D);
-//     zHat2DOut = m_camera.WorldToScreen(pointZHat3D);
-// }
-
-void RobotView::ShowForwardsDK()
+void RobotView::ShowJointTable()
 {
-    std::vector<double> forwardsResult = this->m_robot->GetDKResults();
-    std::vector<double> manualJointSpeeds = this->m_robot->GetManualJointSpeeds();
-
-    Vector3D<double> endEffectorPosition = this->m_robot->GetEndEffectorPosition();
-    Vector3D<double> angular;
-    angular.x = atan2(endEffectorPosition.z, endEffectorPosition.y);
-    angular.y = atan2(endEffectorPosition.x, endEffectorPosition.z);
-    angular.z = atan2(endEffectorPosition.y, endEffectorPosition.x);
+    Vector2D<int> offset = DK_SCREEN_OFFSET;
+    Simulator::Graphics().PrintString(offset.x, offset.y, "Joint (DH) Table [%s] [%s]",
+        m_robot->SimMode() == SimulationMode::NONE                    ? "Kinematics" :
+        m_robot->SimMode() == SimulationMode::STATICS                 ? "Statics" :
+        m_robot->SimMode() == SimulationMode::DIFFERENTIAL_KINEMATICS ? "Differential Kinematics" :
+        m_robot->SimMode() == SimulationMode::VIEW_ALL                ? "View All" : "",
+        m_robot->IsSimForwards() ? "Forwards" : "Inverse");
 
     std::vector<DHParam> dhparams = this->m_robot->GetAllDHParams();
 
-    Vector2D<int> offset = DK_SCREEN_OFFSET;
-    Simulator::Graphics().PrintString(offset.x, offset.y, 
-        "Joint List. [Forwards Differential Kinematics]");
-
-    for (size_t i = 0; i < manualJointSpeeds.size(); i++)
+    for (size_t i = 0; i < this->m_robot->NumJoints(); i++)
     {
         if (i == this->m_robot->GetIdx())
             Simulator::Graphics().SetFGColor(Graphics::COLOR_BLUE);
 
         Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
-            "    Q%d = %+3.3f    Q%d' = %+3.3f %s    Th: %+.3f  Alp: %+.3f  A: %+.3f  D:%+.3f",
-            (int)i + 1, dhparams[i].GetQ(), 
-            (int)i + 1, manualJointSpeeds[i],
-            dhparams[i].Type == JointType::PRISMATIC ? "m/s  " : "rad/s",
+            "    Q%d = %+3.3f  %s  Th: %+.3f  Alp: %+.3f  A: %+.3f  D:%+.3f",
+            (int)i + 1, dhparams[i].GetQ(),
+            (!m_robot->IsSimForwards() && m_robot->IsFreeJoint(i)) ? "[Free]" : "      ",
             dhparams[i].Theta, dhparams[i].Alpha, dhparams[i].A, dhparams[i].D);
 
         if (i == this->m_robot->GetIdx())
@@ -77,77 +45,126 @@ void RobotView::ShowForwardsDK()
             Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
         }
     }
+}
+
+void RobotView::ShowEEPosition()
+{
+    Vector2D<int> offset = DK_SCREEN_OFFSET;
 
     Simulator::Graphics().PrintString(offset.x, offset.y + 600, "End Effector Position");
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 612, 
-        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m", 
-        endEffectorPosition.x, endEffectorPosition.y, endEffectorPosition.z);
+    Vector3D<double> eeLinearPosition = this->m_robot->GetEndEffectorPosition();
+    Vector3D<double> eeAngularPosition = this->m_robot->GetEndEffectorAngularPosition();
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 624, 
-        "    Angular: <ax=%+3.3f, ay=%+3.3f, az=%+3.3f> rad", 
-        angular.x, angular.y, angular.z);
+    Simulator::Graphics().PrintString(offset.x, offset.y + 612,
+        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m",
+        eeLinearPosition.x, eeLinearPosition.y, eeLinearPosition.z);
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 648, "End Effector Velocity");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 660, 
-        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m/s", 
-        forwardsResult[0], forwardsResult[1], forwardsResult[2]);
+    Simulator::Graphics().PrintString(offset.x, offset.y + 624,
+        "    Angular: <ax=%+3.3f, ay=%+3.3f, az=%+3.3f> rad",
+        eeAngularPosition.x, eeAngularPosition.y, eeAngularPosition.z);
+}
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 672, 
-        "    Angular: <wx=%+3.3f, wy=%+3.3f, wz=%+3.3f> rad/s", 
-        forwardsResult[3], forwardsResult[4], forwardsResult[5]);
+void RobotView::RenderJointVelocity(
+    CoordinateStub &stub, double velocity, JointType jointType, int frameNumber)
+{
+    Transform stubToBase = stub.GetTransform();
+
+    Vector3D<double> origin3D = stubToBase.GetColumn(3);
+    Vector3D<double> offset3D = stubToBase.GetColumn(2) * velocity;
+
+    Vector3D<double> rxnPoint3D = origin3D + offset3D;
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_GRAY);
+    this->m_camera.DrawArrow(origin3D, rxnPoint3D,
+        "%s_Q%d'=%.3lf%s",
+        jointType == JointType::PRISMATIC ? "V" : "W",
+        frameNumber, velocity,
+        jointType == JointType::PRISMATIC ? "m/s" : "rad/s");
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
+}
+
+void RobotView::ShowForwardsDK()
+{
+    std::vector<CoordinateStub> stubs = this->m_robot->GetAllStubs();
+    std::vector<DHParam> dhparams = this->m_robot->GetAllDHParams();
+    std::vector<double> velocities = this->m_robot->GetManualJointSpeeds();
+
+    CoordinateStub prevStub = CoordinateStub();
+
+    for (size_t i = 0; i < stubs.size(); i++)
+    {
+        if (this->m_shown[i])
+            this->RenderJointVelocity(prevStub, velocities[i], dhparams[i].Type, i + 1);
+
+        prevStub = stubs[i];
+    }
+
+    /* Show the velocity vector on the end effector */
+    std::vector<double> eeVelocity = this->m_robot->GetForwardDKResults();
+
+    Transform stubToBase = this->m_robot->EndEffectorTransform();
+    Vector3D<double> origin3D = this->m_robot->GetEndEffectorPosition();
+
+    Vector3D<double> linear = Vector3D<double>(eeVelocity[0], eeVelocity[1], eeVelocity[2]);
+    Vector3D<double> angular = Vector3D<double>(eeVelocity[3], eeVelocity[4], eeVelocity[5]);
+
+    Vector3D<double> linearPos = linear + origin3D;
+    Vector3D<double> angularPos = angular + origin3D;
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_LIGHTGRAY);
+    this->m_camera.DrawArrow(origin3D, linearPos,
+        "V_e=<%.3f, %.3f, %.3f> m/s", linear.x, linear.y, linear.z);
+
+    this->m_camera.DrawArrow(origin3D, angularPos,
+        "W_e=<%.3f, %.3f, %.3f> rad/s", angular.x, angular.y, angular.z);
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 
 void RobotView::ShowInverseDK()
 {
-    Vector2D<int> offset = DK_SCREEN_OFFSET;
-    Simulator::Graphics().PrintString(offset.x, offset.y, 
-        "Joint List. [Inverse Differential Kinematics]");
-
-    std::vector<double> jointVelocities = this->m_robot->GetDKResults();
+    std::vector<CoordinateStub> stubs = this->m_robot->GetAllStubs();
     std::vector<DHParam> dhparams = this->m_robot->GetAllDHParams();
+    std::vector<double> jointVelocities = this->m_robot->GetInverseDKResults();
 
-    for (size_t i = 0; i < jointVelocities.size(); i++)
+    if (jointVelocities.empty())
     {
-        if (i == this->m_robot->GetIdx())
-            Simulator::Graphics().SetFGColor(Graphics::COLOR_BLUE);
-
-        Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (i + 1)),
-            "    Q%d = %+3.3f    Q%d' = %+3.3f %s %s",
-            (int)i + 1, dhparams[i].GetQ(), 
-            (int)i + 1, jointVelocities[i], 
-            dhparams[i].Type == JointType::PRISMATIC ? "m/s" : "rad/s",
-            this->m_robot->IsFreeJoint(i) ? "[Free]" : "");
-
-        if (i == this->m_robot->GetIdx())
-        {
-            Simulator::Graphics().PrintString(offset.x, offset.y + (12 * ((int)i + 1)), " -> ");
-            Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
-        }
+        Vector2D<int> offset = DK_SCREEN_OFFSET;
+        Simulator::Graphics().PrintString(offset.x, offset.y + (12 * (m_robot->NumJoints() + 1)),
+            "    -> Jacobian is singular.");
+        return;
     }
 
-    std::vector<double> endEffectorVelocity = this->m_robot->GetEndEffectorVelocity();
+    CoordinateStub prevStub = CoordinateStub();
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 600, "End Effector Position");
+    for (size_t i = 0; i < stubs.size(); i++)
+    {
+        if (this->m_shown[i])
+            this->RenderJointVelocity(prevStub, jointVelocities[i], dhparams[i].Type, i + 1);
 
-    Vector3D<double> endEffectorPosition = this->m_robot->GetEndEffectorPosition();
-    Vector3D<double> angular;
-    angular.x = atan2(endEffectorPosition.z, endEffectorPosition.y);
-    angular.y = atan2(endEffectorPosition.x, endEffectorPosition.z);
-    angular.z = atan2(endEffectorPosition.y, endEffectorPosition.x);
+        prevStub = stubs[i];
+    }
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 612, 
-        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m", 
-        endEffectorPosition.x, endEffectorPosition.y, endEffectorPosition.z);
+    /* Drawing end effector velocity and acceleration */
+    Vector3D<double> origin3D = this->m_robot->GetEndEffectorPosition();
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 624, 
-        "    Angular: <ax=%+3.3f, ay=%+3.3f, az=%+3.3f> rad", 
-        angular.x, angular.y, angular.z);
+    VelocityCouple eeVelocity = this->m_robot->GetEndEffectorVelocity();
+    Vector3D<double> eeLinearVelocity = eeVelocity.Linear().Cartesian();
+    Vector3D<double> eeAngularVelocity = eeVelocity.Angular().Cartesian();
 
-    Simulator::Graphics().PrintString(offset.x, offset.y + 648, "End Effector Velocity");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 660, 
-        "     Linear: <lx=%+3.3f, ly=%+3.3f, lz=%+3.3f> m/s", 
-        endEffectorVelocity[0], endEffectorVelocity[1], endEffectorVelocity[2]);
+    Vector3D<double> eeLinearVelocityPos = eeLinearVelocity + origin3D;
+    Vector3D<double> eeAngularVelocityPos = eeAngularVelocity + origin3D;
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_LIGHTGRAY);
+    this->m_camera.DrawArrow(origin3D, eeLinearVelocityPos,
+        "V_e=<%.3f, %.3f, %.3f> m/s",
+        eeLinearVelocity.x, eeLinearVelocity.y, eeLinearVelocity.z);
+
+    this->m_camera.DrawArrow(origin3D, eeAngularVelocityPos,
+        "W_e=<%.3f, %.3f, %.3f> rad/s",
+        eeAngularVelocity.x, eeAngularVelocity.y, eeAngularVelocity.z);
+
+    Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 
 void RobotView::ShowEEStatics()
@@ -232,17 +249,14 @@ void RobotView::ShowBaseTransformStatics()
 
 void RobotView::ShowStatics()
 {
-    if (this->m_showStatics)
-    {
-        this->ShowEEStatics();
-        this->ShowJointStatics();
-        this->ShowBaseTransformStatics();
-    }
+    this->ShowEEStatics();
+    this->ShowJointStatics();
+    this->ShowBaseTransformStatics();
 }
 
 void RobotView::ShowDK()
 {
-    if (this->m_robot->IsDKForwards())
+    if (this->m_robot->IsSimForwards())
         this->ShowForwardsDK();
     else
         this->ShowInverseDK();
@@ -257,11 +271,11 @@ void RobotView::RenderStub(CoordinateStub &stub, bool highlighted, size_t frameN
     Vector3D<double> zHat3D = transform.GetColumn(2) + origin3D;
 
     Simulator::Graphics().SetFGColor(highlighted ? Graphics::COLOR_BLUE : Graphics::COLOR_WHITE);
-    this->m_camera.DrawArrow(origin3D, xHat3D, "x%u", frameNumber);
-    this->m_camera.DrawArrow(origin3D, yHat3D, "y%u", frameNumber);
+    this->m_camera.DrawArrow(origin3D, xHat3D, "x%u", (int)frameNumber);
+    this->m_camera.DrawArrow(origin3D, yHat3D, "y%u", (int)frameNumber);
 
     Simulator::Graphics().SetFGColor(Graphics::COLOR_GREEN);
-    this->m_camera.DrawArrow(origin3D, zHat3D, "z%u", frameNumber);
+    this->m_camera.DrawArrow(origin3D, zHat3D, "z%u", (int)frameNumber);
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 
@@ -271,56 +285,47 @@ void RobotView::ToggleShown(size_t idx)
         this->m_shown[idx] = !this->m_shown[idx];
 }
 
-void RobotView::ShowControls()
-{
-    Vector2D<int> offset = CONTROLS_OFFSET;
-    Simulator::Graphics().PrintString(offset.x, offset.y, "Controls:");
-
-    Simulator::Graphics().PrintString(offset.x, offset.y + 12, 
-        "    WASD or Middle Mouse Button: Camera");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 24,
-        "    ZXCV: Top/Front/Side/Isometric View");
-
-    Simulator::Graphics().PrintString(offset.x, offset.y + 48, 
-        "    1-6: Toggle Axis View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 60,
-        "    Shift + 1-6: Solo Toggle Axis View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 72,
-        "    Backtick (next to the 1 key): Show all Axes)");
-
-    Simulator::Graphics().PrintString(offset.x, offset.y + 96,
-        "    Q: Toggle Forwards/Backwards Differential Kinematics");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 108,
-        "    Right Mouse Button: Pan 2D View");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 120,
-        "    Left Mouse Button: Adjust selected component");
-    Simulator::Graphics().PrintString(offset.x, offset.y + 132,
-        "    Shift + Left Mouse Button: Adjust joint velocity");
-
-}
-
 void RobotView::Poll()
 {
     CoordinateStub baseFrame;
     this->m_camera.RefreshView();
-    this->RenderStub(baseFrame, false, 0);
 
+    this->ShowJointTable();
+    this->ShowEEPosition();
+    
+    this->RenderStub(baseFrame, false, 0);
     std::vector<CoordinateStub> stubs = this->m_robot->GetAllStubs();
 
     for (size_t i = 0; i < stubs.size(); i++)
         if (this->m_shown[i])
             this->RenderStub(stubs[i], (int)i == this->m_robot->GetIdx(), i + 1);
 
-    this->ShowDK();
-    this->ShowStatics();
-    // this->ShowControls();
+
+    switch (this->m_robot->SimMode())
+    {
+        case SimulationMode::DIFFERENTIAL_KINEMATICS:
+            this->ShowDK();
+            break;
+
+        case SimulationMode::STATICS:
+            this->ShowStatics();
+            break;
+
+        case SimulationMode::VIEW_ALL:
+            this->ShowDK();
+            this->ShowStatics();
+            break;
+
+        default:
+            break;
+    }
 }
 
 void RobotView::ShowSolo(size_t idx)
 {
     std::fill(this->m_shown.begin(), this->m_shown.end(), false);
 
-    if (idx < 6)
+    if (idx < this->m_robot->NumJoints())
     {
         this->m_shown[idx] = true;
         if (idx > 0)

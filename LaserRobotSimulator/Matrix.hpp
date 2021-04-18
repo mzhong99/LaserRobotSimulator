@@ -64,6 +64,10 @@ public:
     Matrix SubMatrix(size_t rowLow, size_t rowHigh, size_t colLow, size_t colHigh);
     std::vector<double> Flatten() { return m_data; }
 
+    /* Precondition: Matrix is augmented with the last column being the B vector. */
+    std::vector<double> RREFWithFreeVariables(
+        const std::vector<double> &freeVars, std::vector<bool> &isFreeOut);
+
     static bool DebugCheck();
     void DebugPrint();
 

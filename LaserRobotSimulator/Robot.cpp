@@ -72,20 +72,16 @@ void DHParam::SetQ(double val)
 /**************************************************************************************************/
 /* Model ---------------------------------------------------------------------------------------- */
 /**************************************************************************************************/
-void Robot::AccumulateEndEffectorVelocity(double deltaE) 
-{
-    if (this->m_idx < this->m_manualEndEffectorVelocity.size())
-        this->m_manualEndEffectorVelocity[this->m_idx] += deltaE;
-}
-
 Robot::Robot()
 {
+    m_simulationMode = SimulationMode::VIEW_ALL;
+
+    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 2.0));
+    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 2.0));
+    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 2.0));
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
-    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
-    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(M_PI / 2.0, M_PI / 2.0, 0));
-    m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreatePrismatic(0, 0, 0));
 
     m_coordinateStubs.resize(m_dhParams.size());
@@ -93,20 +89,24 @@ Robot::Robot()
     m_jointForceMoments.resize(m_dhParams.size());
 
     m_jacobian = Matrix(6, m_dhParams.size());
-    m_manualEndEffectorVelocity.resize(m_jacobian.Rows());
     m_isFreeVariable.resize(m_dhParams.size());
-
-    m_manualEndEffectorVelocity = { 1.0, 2.0, 3.0, -1.0, -2.0, -3.0 };
 }
 
 void Robot::RecomputeCoordinateStubs()
 {
     Transform cumulative = Transform();
+    m_eeAngularPosition = Vector3D<double>(0);
 
     for (size_t i = 0; i < m_dhParams.size(); i++)
     {
         DHParam dhparam = m_dhParams[i];
         Transform transform = Transform(dhparam.Theta, dhparam.Alpha, dhparam.A, dhparam.D);
+
+        /* Compute angular position BEFORE shifting by rotation */
+        Rotation rotBeforeTransform = cumulative.GetRotation();
+        Vector3D<double> jointAngle = Vector3D<double>(0, 0, dhparam.Theta);
+        Vector3D<double> jointAngleInBase = rotBeforeTransform.Rotate(jointAngle);
+        m_eeAngularPosition += jointAngleInBase;
         
         /* Perform a right-multiplication since cumulative contains all but the latest */
         cumulative = Transform::Multiply(cumulative, transform);
@@ -174,11 +174,11 @@ void Robot::RecomputeStatics()
 
     /* Base frame equivalent force */
     Transform eeToBase = this->EndEffectorTransform();
-    Vector3D<double> posBaseToEE = eeToBase.GetColumn(3);
+    Vector3D<double> posEEToBase = eeToBase.GetColumn(3) * -1.0;
     Vector3D<double> forceInBase = this->m_forceMoment.Force();
 
-    Vector3D<double> momentAboutEEInBase = eeToBase.TransformPoint(this->m_forceMoment.Moment());
-    Vector3D<double> momentDelta = Vector3D<double>::Cross(posBaseToEE, forceInBase);
+    Vector3D<double> momentAboutEEInBase = this->m_forceMoment.Moment();
+    Vector3D<double> momentDelta = Vector3D<double>::Cross(posEEToBase, forceInBase);
     Vector3D<double> momentAboutBaseInBase = momentAboutEEInBase - momentDelta;
 
     this->m_baseForceEquivalent = forceInBase;
@@ -196,53 +196,14 @@ std::vector<double> Robot::GetForwardDKResults()
 
 std::vector<double> Robot::GetInverseDKResults()
 {
-    Matrix endEffectorFull = Matrix::CreateCol(this->m_manualEndEffectorVelocity);
+    Matrix endEffectorFull = m_eeVelocityCouple.AsColumn();
     Matrix jacobianAugmented = Matrix::LRJoin(m_jacobian, endEffectorFull);
-
-    jacobianAugmented.GaussJordanEliminate();
 
     std::vector<double> results;
     results.resize(this->NumJoints(), 0.0);
     m_isFreeVariable.resize(this->NumJoints());
 
-    std::fill(m_isFreeVariable.begin(), m_isFreeVariable.end(), true);
-
-    for (size_t row = 0; row < jacobianAugmented.Rows(); row++)
-    {
-        size_t freeCol = jacobianAugmented.GetHeadPosition(row);
-        m_isFreeVariable[freeCol] = false;
-    }
-
-    for (size_t row = 0; row < jacobianAugmented.Rows(); row++)
-    {
-        results[row] = jacobianAugmented.At(row, jacobianAugmented.Cols() - 1);
-        for (size_t col = 0; col < jacobianAugmented.Cols() - 1; col++)
-        {
-            if (m_isFreeVariable[col])
-            {
-                double freeDelta = jacobianAugmented.At(row, col) * this->m_manualJointSpeeds[col];
-                results[row] -= freeDelta;
-            }
-        }
-    }
-
-    for (size_t col = 0; col < results.size(); col++)
-        if (m_isFreeVariable[col])
-            results[col] = this->m_manualJointSpeeds[col];
-
-    return results;
-}
-
-std::vector<double> Robot::GetDKResults()
-{
-    std::vector<double> result;
-
-    if (m_dkForwards)
-        result = this->GetForwardDKResults();
-    else
-        result = this->GetInverseDKResults();
-
-    return result;
+    return jacobianAugmented.RREFWithFreeVariables(m_manualJointSpeeds, m_isFreeVariable);
 }
 
 Matrix Robot::GetEEForceMoment() 
