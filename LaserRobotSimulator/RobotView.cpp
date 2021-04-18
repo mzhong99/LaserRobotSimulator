@@ -17,30 +17,30 @@ RobotView::RobotView(Robot *robot)
     m_showStatics = true;
 }
 
-void RobotView::ComputeScreenCoordinateArrows(
-    CoordinateStub &stub,
-    Vector2D<double> &originOut,
-    Vector2D<double> &xHat2DOut,
-    Vector2D<double> &yHat2DOut,
-    Vector2D<double> &zHat2DOut)
-{
-    Transform stubToBase = stub.GetTransform();
-
-    Vector3D<double> origin3D = stubToBase.GetColumn(3);
-
-    Vector3D<double> offsetXHat3D = stubToBase.GetColumn(0);
-    Vector3D<double> offsetYHat3D = stubToBase.GetColumn(1);
-    Vector3D<double> offsetZHat3D = stubToBase.GetColumn(2);
-
-    Vector3D<double> pointXHat3D = origin3D + offsetXHat3D;
-    Vector3D<double> pointYHat3D = origin3D + offsetYHat3D;
-    Vector3D<double> pointZHat3D = origin3D + offsetZHat3D;
-
-    originOut = m_camera.WorldToScreen(origin3D);
-    xHat2DOut = m_camera.WorldToScreen(pointXHat3D);
-    yHat2DOut = m_camera.WorldToScreen(pointYHat3D);
-    zHat2DOut = m_camera.WorldToScreen(pointZHat3D);
-}
+// void RobotView::ComputeScreenCoordinateArrows(
+//     CoordinateStub &stub,
+//     Vector2D<double> &originOut,
+//     Vector2D<double> &xHat2DOut,
+//     Vector2D<double> &yHat2DOut,
+//     Vector2D<double> &zHat2DOut)
+// {
+//     Transform stubToBase = stub.GetTransform();
+// 
+//     Vector3D<double> origin3D = stubToBase.GetColumn(3);
+// 
+//     Vector3D<double> offsetXHat3D = stubToBase.GetColumn(0);
+//     Vector3D<double> offsetYHat3D = stubToBase.GetColumn(1);
+//     Vector3D<double> offsetZHat3D = stubToBase.GetColumn(2);
+// 
+//     Vector3D<double> pointXHat3D = origin3D + offsetXHat3D;
+//     Vector3D<double> pointYHat3D = origin3D + offsetYHat3D;
+//     Vector3D<double> pointZHat3D = origin3D + offsetZHat3D;
+// 
+//     originOut = m_camera.WorldToScreen(origin3D);
+//     xHat2DOut = m_camera.WorldToScreen(pointXHat3D);
+//     yHat2DOut = m_camera.WorldToScreen(pointYHat3D);
+//     zHat2DOut = m_camera.WorldToScreen(pointZHat3D);
+// }
 
 void RobotView::ShowForwardsDK()
 {
@@ -164,20 +164,12 @@ void RobotView::ShowEEStatics()
 
     Vector3D<double> forcePos = force + origin3D;
     Vector3D<double> momentPos = moment + origin3D;
-    
-    Vector2D<double> origin2D = Vector2D<double>(origin3D.x, origin3D.z);
-    Vector2D<double> force2D = Vector2D<double>(forcePos.x, forcePos.z);
-    Vector2D<double> moment2D = Vector2D<double>(momentPos.x, momentPos.z);
-
-    Vector2D<double> scOrigin2D = m_camera.WorldToScreen(origin3D);
-    Vector2D<double> scForcePos2D = m_camera.WorldToScreen(forcePos);
-    Vector2D<double> scMomentPos2D = m_camera.WorldToScreen(momentPos);
 
     Simulator::Graphics().SetFGColor(Graphics::COLOR_RED);
-    Simulator::Graphics().DrawArrow(scOrigin2D, scForcePos2D,
+    this->m_camera.DrawArrow(origin3D, forcePos,
         "F_e=<%.3f, %.3f, %.3f> N", force.x, force.y, force.z);
 
-    Simulator::Graphics().DrawArrow(scOrigin2D, scMomentPos2D,
+    this->m_camera.DrawArrow(origin3D, momentPos,
         "M_e=<%.3f, %.3f, %.3f> Nm", moment.x, moment.y, moment.z);
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
@@ -192,11 +184,8 @@ void RobotView::RenderJointStaticReaction(
 
     Vector3D<double> rxnPoint3D = origin3D + offset3D;
 
-    Vector2D<double> scOrigin2D = m_camera.WorldToScreen(origin3D);
-    Vector2D<double> scRxnPoint2D = m_camera.WorldToScreen(rxnPoint3D);
-
     Simulator::Graphics().SetFGColor(Graphics::COLOR_YELLOW);
-    Simulator::Graphics().DrawArrow(scOrigin2D, scRxnPoint2D,
+    this->m_camera.DrawArrow(origin3D, rxnPoint3D,
         "%s_Q%d=%.3lf%s",
         jointType == JointType::PRISMATIC ? "F" : "M",
         frameNumber,
@@ -229,16 +218,13 @@ void RobotView::ShowBaseTransformStatics()
 
     Vector3D<double> origin3D = Vector3D<double>(0, 0, 0); /* because it's literally the origin */
 
-    Vector2D<double> scOrigin2D = m_camera.WorldToScreen(origin3D);
-    Vector2D<double> scForce2D = m_camera.WorldToScreen(baseForceEquivalent);
-    Vector2D<double> scMoment2D = m_camera.WorldToScreen(baseMomentEquivalent);
-
     Simulator::Graphics().SetFGColor(Graphics::COLOR_CYAN);
-    Simulator::Graphics().DrawArrow(scOrigin2D, scForce2D,
+
+    this->m_camera.DrawArrow(origin3D, baseForceEquivalent,
         "F_eq=<%.3lf, %.3lf, %.3lf> N",
         baseForceEquivalent.x, baseForceEquivalent.y, baseForceEquivalent.z);
 
-    Simulator::Graphics().DrawArrow(scOrigin2D, scMoment2D,
+    this->m_camera.DrawArrow(origin3D, baseMomentEquivalent,
         "M_eq=<%.3lf, %.3lf, %.3lf> Nm",
         baseMomentEquivalent.x, baseMomentEquivalent.y, baseMomentEquivalent.z);
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
@@ -264,15 +250,18 @@ void RobotView::ShowDK()
 
 void RobotView::RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber)
 {
-    Vector2D<double> origin2D, pointXHat2D, pointYHat2D, pointZHat2D;
-    this->ComputeScreenCoordinateArrows(stub, origin2D, pointXHat2D, pointYHat2D, pointZHat2D);
+    Transform transform = stub.GetTransform();
+    Vector3D<double> origin3D = transform.GetColumn(3);
+    Vector3D<double> xHat3D = transform.GetColumn(0) + origin3D;
+    Vector3D<double> yHat3D = transform.GetColumn(1) + origin3D;
+    Vector3D<double> zHat3D = transform.GetColumn(2) + origin3D;
 
     Simulator::Graphics().SetFGColor(highlighted ? Graphics::COLOR_BLUE : Graphics::COLOR_WHITE);
-    Simulator::Graphics().DrawArrow(origin2D, pointXHat2D, "x%u", frameNumber);
-    Simulator::Graphics().DrawArrow(origin2D, pointYHat2D, "y%u", frameNumber);
+    this->m_camera.DrawArrow(origin3D, xHat3D, "x%u", frameNumber);
+    this->m_camera.DrawArrow(origin3D, yHat3D, "y%u", frameNumber);
 
     Simulator::Graphics().SetFGColor(Graphics::COLOR_GREEN);
-    Simulator::Graphics().DrawArrow(origin2D, pointZHat2D, "z%u", frameNumber);
+    this->m_camera.DrawArrow(origin3D, zHat3D, "z%u", frameNumber);
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
 

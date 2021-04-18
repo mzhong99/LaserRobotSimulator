@@ -169,13 +169,6 @@ private:
     bool m_showStatics;
     std::vector<bool> m_shown;
 
-    void ComputeScreenCoordinateArrows(
-        CoordinateStub &stub, 
-        Vector2D<double> &originOut, 
-        Vector2D<double> &xHat2DOut, 
-        Vector2D<double> &yHat2DOut, 
-        Vector2D<double> &zHat2DOut);
-
     void ShowForwardsDK();
     void ShowInverseDK();
 

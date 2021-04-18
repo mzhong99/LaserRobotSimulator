@@ -48,6 +48,8 @@ public:
     { m_posWorldCoords.y += Simulator::App().DetaTimeSeconds() * CAMERA_SPEED * direction; }
 
     Vector2D<double> WorldToScreen(Vector3D<double> pointInWorld);
+    void DrawArrow(
+        Vector3D<double> &tailInWorld, Vector3D<double> &headInWorld, const char *fmt, ...);
 
     void RefreshView();
 

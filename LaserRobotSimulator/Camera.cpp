@@ -39,8 +39,6 @@ void Camera::RefreshView()
 
     m_worldToBase = Transform::Multiply(rotated, shifted);
     m_baseToWorld = m_worldToBase.Inverse();
-
-    std::cout << m_posWorldCoords << std::endl;
 }
 
 void Camera::AccumulateForwards(double direction)
@@ -67,6 +65,7 @@ Vector2D<double> Camera::PerspectiveWorldToScreen(Vector3D<double> pointInWorld)
 
     if (pointInBase.z < -0.9)
         return Vector2D<double>(1e6, 1e6);
+
     double zw = fabs(pointInBase.z);
 
     double W = Simulator::Graphics().Width();
@@ -104,3 +103,22 @@ Vector2D<double> Camera::WorldToScreen(Vector3D<double> pointInWorld)
 
     return this->IsometricWorldToScreen(pointInWorld);
 }
+
+void Camera::DrawArrow(
+    Vector3D<double> &tailInWorld, Vector3D<double> &headInWorld, const char *fmt, ...)
+{
+    Vector3D<double> tailInBase = m_worldToBase.TransformPoint(tailInWorld);
+    Vector3D<double> headInBase = m_worldToBase.TransformPoint(headInWorld);
+
+    if ((tailInBase.z < 0.0 || headInBase.z < 0.0) && this->m_usePerspective)
+        return;
+
+    Vector2D<double> tailInScreen = this->WorldToScreen(tailInWorld);
+    Vector2D<double> headInScreen = this->WorldToScreen(headInWorld);
+
+    va_list args;
+    va_start(args, fmt);
+    Simulator::Graphics().DrawArrow(tailInScreen, headInScreen, fmt, args);
+    va_end(args);
+}
+
