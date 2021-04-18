@@ -173,6 +173,7 @@
     <ClCompile Include="SWTimer.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Utility.cpp" />
+    <ClCompile Include="VelocityCouple.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.hpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="Utility.hpp" />
     <ClInclude Include="Vector2D.hpp" />
     <ClInclude Include="Vector3D.hpp" />
+    <ClInclude Include="VelocityCouple.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

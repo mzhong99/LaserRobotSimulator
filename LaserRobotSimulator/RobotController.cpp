@@ -71,21 +71,16 @@ void RobotController::PollChangeQ()
 
     if (!Simulator::Input().KeyPressed(SDLK_LCTRL))
     {
-        if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
         {
-            if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
-            {
-                Vector2D<int> motion = Simulator::Input().MouseMotion();
-                this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
-            }
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
         }
-        else
+
+        if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
         {
-            if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
-            {
-                Vector2D<int> motion = Simulator::Input().MouseMotion();
-                this->m_robot->GetJoint().SetQ(oldQ + (motion.y * -0.005));
-            }
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            this->m_robot->GetJoint().SetQ(oldQ + (motion.y * -0.005));
         }
     }
 }
@@ -131,12 +126,6 @@ void RobotController::PollChangeCamera()
 
     if (!Simulator::Input().KeyPressed(SDLK_LCTRL) && !Simulator::Input().KeyPressed(SDLK_LSHIFT))
     {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_view->Camera().AccumulateScreenOffset(motion);
-        }
-
         if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
