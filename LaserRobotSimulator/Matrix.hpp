@@ -18,6 +18,7 @@ private:
     size_t m_rows;
     size_t m_cols;
 
+    void MoveZerosDown(size_t col);
     void SortByHead();
     void SwapRow(size_t rowA, size_t rowB);
 
@@ -32,6 +33,8 @@ private:
 public:
     Matrix(): Matrix(0, 0) {}
     Matrix(size_t rows, size_t cols);
+    Matrix(size_t rows, size_t cols, std::vector<double> data): 
+        m_rows(rows), m_cols(cols), m_data(data) {}
 
     static Matrix CreateCol(std::vector<double> values);
     static Matrix CreateRow(std::vector<double> values);
@@ -67,9 +70,6 @@ public:
     /* Precondition: Matrix is augmented with the last column being the B vector. */
     std::vector<double> RREFWithFreeVariables(
         const std::vector<double> &freeVars, std::vector<bool> &isFreeOut);
-
-    static bool DebugCheck();
-    void DebugPrint();
 
     friend std::ostream &operator<<(std::ostream &os, Matrix &matrix);
 };

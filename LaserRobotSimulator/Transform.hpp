@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include "Rotation.hpp"
 #include "Matrix.hpp"
+#include "RobotFwd.hpp"
 
 class Transform
 {
@@ -13,6 +14,7 @@ private:
 public:
     Transform(): m_data(Matrix::Identity(4)) {}
     Transform(double theta, double alpha, double a, double d);
+    Transform(DHParam param);
     Transform(Rotation rotation, Vector3D<double> displacement);
 
     double &At(size_t row, size_t col) { return this->m_data.At(row, col); }

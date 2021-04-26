@@ -4,10 +4,11 @@
 
 #include <iomanip>
 
-#define INCREMENT_VELOCITY      (3.0)
+#define INCREMENT_VELOCITY          (3.0)
 
-#define LONGITUDE_SENSITIVITY   (0.0025)
-#define LATITUDE_SENSITIVITY    (0.005)
+#define LONGITUDE_SENSITIVITY       (0.0025)
+#define LATITUDE_SENSITIVITY        (0.005)
+#define EE_SENS    (0.005)
 
 /**************************************************************************************************/
 /* Controller ----------------------------------------------------------------------------------- */
@@ -54,30 +55,20 @@ void RobotController::PollChangeIdx()
         this->m_robot->SelectIdx(8);
 }
 
-void RobotController::PollChangeQ()
+void RobotController::PollChangeFwdK()
 {
-    double scaler = 0.0;
-    if (Simulator::Input().KeyPressed(SDLK_UP))
-        scaler += 1.0;
-
-    if (Simulator::Input().KeyPressed(SDLK_DOWN))
-        scaler -= 1.0;
-
-    double increment = scaler * INCREMENT_VELOCITY * Simulator::App().DetaTimeSeconds();
-    double oldQ = this->m_robot->GetJoint().GetQ();
-
-    this->m_robot->GetJoint().SetQ(oldQ + increment);
+    double oldQ = m_robot->GetFwdK().GetQ(m_robot->GetIdx());
 
     if (!Simulator::Input().KeyPressed(SDLK_LCTRL) && !Simulator::Input().KeyPressed(SDLK_LSHIFT))
     {
         if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->GetJoint().SetQ(oldQ + (motion.y * -0.005));
+            m_robot->GetFwdK().SetQ(m_robot->GetIdx(), oldQ + (motion.y * -0.005));
         }
 
         if (Simulator::Input().KeyTapped(SDLK_0))
-            this->m_robot->GetJoint().SetQ(0);
+            this->m_robot->GetFwdK().SetQ(m_robot->GetIdx(), 0);
     }
 }
 
@@ -90,31 +81,13 @@ void RobotController::PollSelectSimMode()
         m_robot->SelectSimMode(SimulationMode::STATICS);
 
     if (Simulator::Input().KeyTapped(SDLK_j))
-        m_robot->SelectSimMode(SimulationMode::DIFFERENTIAL_KINEMATICS);
+        m_robot->SelectSimMode(SimulationMode::FWD_KINEMATICS);
+
+    if (Simulator::Input().KeyTapped(SDLK_i))
+        m_robot->SelectSimMode(SimulationMode::INV_KINEMATICS);
 
     if (Simulator::Input().KeyTapped(SDLK_v))
         m_robot->SelectSimMode(SimulationMode::NONE);
-}
-
-void RobotController::PollChangeEndEffector()
-{
-    if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
-    {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateEEForceMagnitude(-1.0 * motion.y * LATITUDE_SENSITIVITY);
-        }
-
-        if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-
-            this->m_robot->AccumulateEEForceOrientation(
-                motion.y * -1.0 * LATITUDE_SENSITIVITY,
-                motion.x * LONGITUDE_SENSITIVITY);
-        }
-    }
 }
 
 void RobotController::PollChangeCamera()
@@ -157,12 +130,6 @@ void RobotController::PollChangeCamera()
     }
 }
 
-void RobotController::PollToggleSimForwards()
-{
-    if (Simulator::Input().KeyTapped(SDLK_q))
-        this->m_robot->ToggleSimForwards();
-}
-
 void RobotController::PollToggleShown()
 {
     if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
@@ -184,6 +151,15 @@ void RobotController::PollToggleShown()
 
         if (Simulator::Input().KeyTapped(SDLK_6))
             this->m_view->ShowSolo(5);
+
+        if (Simulator::Input().KeyTapped(SDLK_7))
+            this->m_view->ShowSolo(6);
+
+        if (Simulator::Input().KeyTapped(SDLK_8))
+            this->m_view->ShowSolo(7);
+
+        if (Simulator::Input().KeyTapped(SDLK_9))
+            this->m_view->ShowSolo(8);
     }
     else if (Simulator::Input().KeyPressed(SDLK_LCTRL))
     {
@@ -204,29 +180,37 @@ void RobotController::PollToggleShown()
 
         if (Simulator::Input().KeyTapped(SDLK_6))
             this->m_view->ToggleShown(5);
+
+        if (Simulator::Input().KeyTapped(SDLK_7))
+            this->m_view->ToggleShown(6);
+
+        if (Simulator::Input().KeyTapped(SDLK_8))
+            this->m_view->ToggleShown(7);
+
+        if (Simulator::Input().KeyTapped(SDLK_9))
+            this->m_view->ToggleShown(8);
     }
 
     if (Simulator::Input().KeyTapped(SDLK_BACKQUOTE))
         this->m_view->ShowAll();
 }
 
-void RobotController::PollChangeInverseStatics()
+void RobotController::PollChangeStatics()
 {
     if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
     {
         if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateEEForceMagnitude(-1.0 * motion.y * LATITUDE_SENSITIVITY);
+            m_robot->GetStatics().AccEEForce(-1.0 * motion.y * LATITUDE_SENSITIVITY, 0, 0);
         }
 
         if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
 
-            this->m_robot->AccumulateEEForceOrientation(
-                motion.y * -1.0 * LATITUDE_SENSITIVITY,
-                motion.x * LONGITUDE_SENSITIVITY);
+            m_robot->GetStatics().AccEEForce(
+                0, motion.y * -1.0 * LATITUDE_SENSITIVITY, motion.x * LONGITUDE_SENSITIVITY);
         }
     }
 
@@ -235,107 +219,132 @@ void RobotController::PollChangeInverseStatics()
         if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateEEMomentMagnitude(-1.0 * motion.y * LATITUDE_SENSITIVITY);
+            m_robot->GetStatics().AccEEMoment(-1.0 * motion.y * LATITUDE_SENSITIVITY, 0, 0);
         }
 
         if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-
-            this->m_robot->AccumulateEEMomentOrientation(
-                motion.y * -1.0 * LATITUDE_SENSITIVITY,
-                motion.x * LONGITUDE_SENSITIVITY);
+            m_robot->GetStatics().AccEEMoment(
+                0, motion.y * -1.0 * LATITUDE_SENSITIVITY, motion.x * LONGITUDE_SENSITIVITY);
         }
     }
 }
 
-void RobotController::PollChangeInverseDK()
+void RobotController::PollChangeInvK()
 {
-    if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+    if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
     {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
+        Vector2D<int> motion = Simulator::Input().MouseMotion();
+        if (Simulator::Input().KeyPressed(SDLK_LALT))
         {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateEELinearMagnitude(-1.0 * motion.y * LATITUDE_SENSITIVITY);
-        }
-
-        if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-
-            this->m_robot->AccumulateEELinearOrientation(
-                motion.y * -1.0 * LATITUDE_SENSITIVITY,
-                motion.x * LONGITUDE_SENSITIVITY);
-        }
-    }
-
-    if (Simulator::Input().KeyPressed(SDLK_LCTRL))
-    {
-        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateEEAngularMagnitude(-1.0 * motion.y * LATITUDE_SENSITIVITY);
-        }
-
-        if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
-        {
-            Vector2D<int> motion = Simulator::Input().MouseMotion();
-
-            this->m_robot->AccumulateEEAngularOrientation(
-                motion.y * -1.0 * LATITUDE_SENSITIVITY,
-                motion.x * LONGITUDE_SENSITIVITY);
-        }
-    }
-
-    if (!Simulator::Input().KeyPressed(SDLK_LCTRL) && !Simulator::Input().KeyPressed(SDLK_LSHIFT))
-    {
-        if (this->m_robot->IsFreeJoint(this->m_robot->GetIdx()))
-        {
-            if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
+            if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
             {
-                Vector2D<int> motion = Simulator::Input().MouseMotion();
-                this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
+                Vector3D<double> fullDelta = Vector3D<double>(0, 0, EE_SENS * -1.0 * motion.Y());
+                m_robot->GetInvK().AccTargetEEPos(0, fullDelta);
+            }
+            else
+            {
+                double xDelta = EE_SENS * -1.0 * (double)motion.Y();
+                double yDelta = EE_SENS * (double)motion.X();
+
+                Vector3D<double> fullDelta = Vector3D<double>(xDelta, yDelta, 0);
+                m_robot->GetInvK().AccTargetEEPos(0, fullDelta);
+            }
+        }
+        else
+        {
+            if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+            {
+                Vector3D<double> fullDelta = Vector3D<double>(0, EE_SENS * -1.0 * motion.Y(), 0);
+                m_robot->GetInvK().AccTargetEEPos(fullDelta, 0);
+            }
+            else
+            {
+                Vector3D<double> forwardsUnit = m_view->Camera().ForwardsUnit();
+                Vector3D<double> sidewaysUnit = m_view->Camera().SidewaysUnit();
+
+                Vector3D<double> forwardsDelta = forwardsUnit * EE_SENS * -1.0 * (double)motion.Y();
+                Vector3D<double> sidewaysDelta = sidewaysUnit * EE_SENS * (double)motion.X();
+
+                Vector3D<double> fullDelta = forwardsDelta + sidewaysDelta;
+                m_robot->GetInvK().AccTargetEEPos(fullDelta, 0);
             }
         }
     }
 }
 
-void RobotController::PollChangeForwardsDK()
+void RobotController::PollChangeInvDK()
+{
+    if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+    {
+        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
+        {
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            m_robot->GetInvK().AccTargetEELinVel(-1.0 * motion.y * LATITUDE_SENSITIVITY, 0, 0);
+        }
+
+        if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
+        {
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            m_robot->GetInvK().AccTargetEELinVel(
+                0, motion.y * -1.0 * LATITUDE_SENSITIVITY, motion.x * LONGITUDE_SENSITIVITY);
+        }
+    }
+
+    if (Simulator::Input().KeyPressed(SDLK_LCTRL))
+    {
+        if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
+        {
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            m_robot->GetInvK().AccTargetEEAngVel(-1.0 * motion.y * LATITUDE_SENSITIVITY, 0, 0);
+        }
+
+        if (Simulator::Input().MousePressed(SDL_BUTTON_MIDDLE))
+        {
+            Vector2D<int> motion = Simulator::Input().MouseMotion();
+            m_robot->GetInvK().AccTargetEEAngVel(
+                0, motion.y * -1.0 * LATITUDE_SENSITIVITY, motion.x * LONGITUDE_SENSITIVITY);
+        }
+    }
+}
+
+void RobotController::PollChangeFwdDK()
 {
     if (!Simulator::Input().KeyPressed(SDLK_LCTRL) && !Simulator::Input().KeyPressed(SDLK_LSHIFT))
     {
         if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
         {
             Vector2D<int> motion = Simulator::Input().MouseMotion();
-            this->m_robot->AccumulateJointSpeed(motion.y * -0.005);
+            m_robot->GetFwdK().AccQPrime(m_robot->GetIdx(), motion.y * -0.005);
         }
     }
-}
-
-void RobotController::PollChangeDK()
-{
-    if (this->m_robot->IsSimForwards())
-        this->PollChangeForwardsDK();
-    else
-        this->PollChangeInverseDK();
 }
 
 void RobotController::Poll()
 {
     this->PollChangeIdx();
-    this->PollChangeQ();
-
     this->PollSelectSimMode();
-    this->PollToggleSimForwards();
 
     switch (this->m_robot->SimMode())
     {
-        case SimulationMode::DIFFERENTIAL_KINEMATICS:
-            this->PollChangeDK();
+        case SimulationMode::FWD_KINEMATICS:
+            this->PollChangeFwdDK();
+            this->PollChangeFwdK();
+            break;
+
+        case SimulationMode::INV_KINEMATICS:
+            this->PollChangeInvK();
+            this->PollChangeInvDK();
             break;
 
         case SimulationMode::STATICS:
-            this->PollChangeInverseStatics();
+            this->PollChangeStatics();
+            this->PollChangeFwdK();
+            break;
+
+        case SimulationMode::VIEW_ALL:
+            this->PollChangeFwdK();
             break;
 
         default:

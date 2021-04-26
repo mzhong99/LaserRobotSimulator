@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.txt = README.txt
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ECE4704UnitTests", "ECE4704UnitTests\ECE4704UnitTests.vcxproj", "{E50BDEFB-0C16-4655-ABEF-2079619A13A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -27,6 +29,14 @@ Global
 		{C334B816-4BFD-4984-98C6-C269C7A9EE88}.Release|x64.Build.0 = Release|x64
 		{C334B816-4BFD-4984-98C6-C269C7A9EE88}.Release|x86.ActiveCfg = Release|Win32
 		{C334B816-4BFD-4984-98C6-C269C7A9EE88}.Release|x86.Build.0 = Release|Win32
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Debug|x64.ActiveCfg = Debug|x64
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Debug|x64.Build.0 = Debug|x64
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Debug|x86.ActiveCfg = Debug|Win32
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Debug|x86.Build.0 = Debug|Win32
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Release|x64.ActiveCfg = Release|x64
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Release|x64.Build.0 = Release|x64
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Release|x86.ActiveCfg = Release|Win32
+		{E50BDEFB-0C16-4655-ABEF-2079619A13A1}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

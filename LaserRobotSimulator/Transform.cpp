@@ -1,4 +1,5 @@
 #include "Transform.hpp"
+#include "Robot.hpp"
 #include <iostream>
 
 Transform::Transform(double theta, double alpha, double a, double d): Transform()
@@ -20,6 +21,8 @@ Transform::Transform(double theta, double alpha, double a, double d): Transform(
     this->At(1, 3) = dy;
     this->At(2, 3) = dz;
 }
+
+Transform::Transform(DHParam param): Transform(param.Theta, param.Alpha, param.A, param.D) {};
 
 Transform::Transform(Rotation rotation, Vector3D<double> displacement): Transform()
 {

@@ -43,6 +43,9 @@ private:
 public:
     Camera();
 
+    Vector3D<double> ForwardsUnit();
+    Vector3D<double> SidewaysUnit();
+
     void AccumulateXRotation(double delta);
     void AccumulateYRotation(double delta) { m_aboutCameraY += delta; }
 

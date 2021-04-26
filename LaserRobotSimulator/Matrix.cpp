@@ -1,5 +1,4 @@
 #include "Matrix.hpp"
-#include "Simulator.hpp"
 
 #include <cstdio>
 
@@ -134,6 +133,32 @@ void Matrix::SwapRow(size_t rowA, size_t rowB)
         std::swap(this->At(rowA, col), this->At(rowB, col));
 }
 
+void Matrix::MoveZerosDown(size_t col)
+{
+    if (this->Rows() < 2)
+        return;
+
+    int left = (int)col;
+    int right = this->Rows() - 1;
+
+    while (left < (int)this->Rows() && fabs(this->At(left, col)) > DOUBLE_EPS)
+        left++;
+
+    while (right > -1 && fabs(this->At(right, col)) < DOUBLE_EPS)
+        right--;
+
+    while (left < right)
+    {
+        this->SwapRow((size_t)left, (size_t)right);
+
+        while (left < (int)this->Rows() && fabs(this->At(left, col)) > DOUBLE_EPS)
+            left++;
+
+        while (right > -1 && fabs(this->At(right, col)) < DOUBLE_EPS)
+            right--;
+    }
+}
+
 void Matrix::SortByHead()
 {
     if (this->Rows() < 2)
@@ -146,11 +171,11 @@ void Matrix::SortByHead()
             size_t currHeadPos = this->GetHeadPosition(i);
             size_t nextHeadPos = this->GetHeadPosition(i + 1);
 
-            if (DebugCheck())
-                std::cout << currHeadPos << " " << nextHeadPos << std::endl;
-
             if (currHeadPos > nextHeadPos)
                 this->SwapRow(i, i + 1);
+            else if (currHeadPos < this->Cols() && nextHeadPos < this->Cols())
+                if (this->At(i, currHeadPos) > this->At(i + 1, nextHeadPos))
+                    this->SwapRow(i, i + 1);
         }
     }
 }
@@ -180,6 +205,7 @@ void Matrix::NormalizeToHead(size_t row)
 void Matrix::NormalizeRowToElement(size_t baseRow, size_t row, size_t col)
 {
     double value = this->At(row, col);
+
     for (size_t i = 0; i < this->Cols(); i++)
         this->At(baseRow, i) /= value;
 }
@@ -258,15 +284,17 @@ void Matrix::RowReduceDown(size_t baseRow)
     double baseHead = this->At(baseRow, baseHeadPos);
     for (size_t nextRow = baseRow + 1; nextRow < this->Rows(); nextRow++)
     {
-        this->NormalizeToHead(nextRow);
-        if (DebugCheck())
-        {
-            this->DebugPrint();
-            std::cout << std::endl;
-        }
+        if (fabs(this->At(nextRow, baseRow)) < DOUBLE_EPS)
+            continue;
 
-        if (fabs(this->At(nextRow, baseHeadPos) > DOUBLE_EPS))
-            this->SubtractRow(baseRow, nextRow);
+        this->NormalizeToHead(baseRow);
+
+        double nextVal = this->At(nextRow, baseRow);
+        for (size_t col = 0; col < this->Cols(); col++)
+            this->At(baseRow, col) *= nextVal;
+
+        this->SubtractRow(baseRow, nextRow);
+        this->NormalizeToHead(baseRow);
     }
 }
 
@@ -274,72 +302,34 @@ void Matrix::RowReduceUp(size_t baseRow)
 {
     for (size_t prevRow = 0; prevRow < baseRow; prevRow++)
     {
-        size_t baseHeadPos = this->GetHeadPosition(baseRow);
-
-        if (fabs(this->At(prevRow, baseHeadPos) < DOUBLE_EPS))
+        if (fabs(this->At(prevRow, baseRow)) < DOUBLE_EPS)
             continue;
 
-        this->NormalizeRowToElement(prevRow, baseRow, baseHeadPos);
+        this->NormalizeToHead(baseRow);
+
+        double prevVal = this->At(prevRow, baseRow);
+        for (size_t col = 0; col < this->Cols(); col++)
+            this->At(baseRow, col) *= prevVal;
+
         this->SubtractRow(baseRow, prevRow);
-        this->NormalizeToHead(prevRow);
+        this->NormalizeToHead(baseRow);
     }
 }
 
 void Matrix::GaussJordanEliminate()
 {
-    if (DebugCheck())
-    {
-        std::cout << "Begin Gauss Jordan..." << std::endl;
-        std::cout << "----------------------------------------" << std::endl;
-        this->DebugPrint();
-        std::cout << std::endl;
-    }
-
     for (size_t row = 0; row < this->Rows(); row++)
     {
-        if (DebugCheck())
-            std::cout << "Row Reduce Down [" << row << "]" << std::endl;
+        this->MoveZerosDown(row);
 
-        this->SortByHead();
-        if (DebugCheck())
-        {
-            std::cout << "Sorted By Head" << std::endl;
-
-            this->DebugPrint();
-            std::cout << std::endl;
-        }
+        for (size_t rowAfter = row; rowAfter < this->Rows(); rowAfter++)
+            this->NormalizeToHead(rowAfter);
 
         this->RowReduceDown(row);
-
-        if (DebugCheck())
-        {
-            this->DebugPrint();
-            std::cout << std::endl;
-        }
-    }
-
-    if (DebugCheck())
-    {
-        std::cout << "Row-Echelon Form" << std::endl;
-        std::cout << "----------------------------------------" << std::endl;
-
-        this->DebugPrint();
-        std::cout << std::endl;
     }
 
     for (size_t row = 0; row < this->Rows(); row++)
-    {
-        if (DebugCheck())
-            std::cout << "Row Reduce Up [" << row << "]" << std::endl;
-
         this->RowReduceUp(this->Rows() - row - 1);
-
-        if (DebugCheck())
-        {
-            this->DebugPrint();
-            std::cout << std::endl;
-        }
-    }
 }
 
 std::vector<double> Matrix::RREFWithFreeVariables(
@@ -382,39 +372,11 @@ std::vector<double> Matrix::RREFWithFreeVariables(
     return results;
 }
 
-bool Matrix::DebugCheck()
-{
-    return Simulator::Input().KeyTapped(SDLK_m);
-}
-
-void Matrix::DebugPrint()
-{
-    char buf[256];
-    const char *sep = "";
-
-    for (size_t row = 0; row < this->Rows(); row++)
-    {
-        std::cout << "[";
-        sep = "";
-
-        for (size_t col = 0; col < this->Cols(); col++)
-        {
-            snprintf(buf, 255, "%s%+4.6lf", sep, this->At(row, col));
-            buf[255] = '\0';
-
-            std::cout << buf;
-            sep = ", ";
-        }
-        std::cout << "]" << std::endl;
-    }
-    std::cout << std::endl;
-}
-
 std::ostream &operator<<(std::ostream &os, Matrix &matrix)
 {
     for (size_t i = 0; i < matrix.Rows(); i++)
     {
-        std::cout << "[";
+        os << "[";
         const char *sep = "";
 
         for (size_t j = 0; j < matrix.Cols(); j++)
@@ -422,12 +384,12 @@ std::ostream &operator<<(std::ostream &os, Matrix &matrix)
             char buf[256];
 
             snprintf(buf, 256, "%s%+.8f", sep, matrix.At(i, j));
-            std::cout << buf;
+            os << buf;
 
             sep = ", ";
         }
 
-        std::cout << "]" << std::endl;
+        os << "]" << std::endl;
     }
 
     return os;

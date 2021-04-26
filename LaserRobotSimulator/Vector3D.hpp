@@ -22,7 +22,7 @@ public:
     Vector3D<T> Normalized() const
     {
         Vector3D<T> result = *this;
-        T mag2 = this->length2();
+        T mag2 = this->Length2();
 
         if (mag2 > 0)
         {
@@ -86,8 +86,8 @@ public:
     Vector3D<T> operator-() const 
     { return Vector3D<T>(-this->x, -this->y, -this->z); }
 
-    T length2() const { return this->Dot(*this); }
-    T length() const { return sqrt(this->length2()); }
+    T Length2() const { return this->Dot(*this); }
+    T Length() const { return sqrt(this->Length2()); }
 
     friend std::ostream &operator<<(std::ostream &os, const Vector3D<T> &vec)
     { 

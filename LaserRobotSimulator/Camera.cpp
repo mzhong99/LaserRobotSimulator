@@ -1,6 +1,7 @@
 #include "Camera.hpp"
 #include "Simulator.hpp"
 
+#define DEFAULT_FOV             (90.0)
 
 Camera::Camera()
 {
@@ -42,6 +43,22 @@ void Camera::RefreshView()
     m_baseToWorld = m_worldToBase.Inverse();
 }
 
+Vector3D<double> Camera::ForwardsUnit()
+{
+    double forwardsX = sin(m_aboutCameraY);
+    double forwardsZ = cos(m_aboutCameraY);
+
+    return Vector3D<double>(forwardsX, 0, forwardsZ);
+}
+
+Vector3D<double> Camera::SidewaysUnit()
+{
+    double sidewaysX = sin(m_aboutCameraY + (M_PI / 2.0));
+    double sidewaysZ = cos(m_aboutCameraY + (M_PI / 2.0));
+
+    return Vector3D<double>(sidewaysX, 0, sidewaysZ);
+}
+
 void Camera::AccumulateForwards(double direction)
 {
     double forwardsX = sin(m_aboutCameraY);
@@ -76,7 +93,7 @@ Vector2D<double> Camera::PerspectiveWorldToScreen(Vector3D<double> pointInWorld)
     double xw = pointInBase.x;
     double yw = pointInBase.y;
 
-    double thetaFOV = M_PI * (pow(75.0, m_perspectiveZoomFactor) / 180.0);
+    double thetaFOV = M_PI * (pow(DEFAULT_FOV, m_perspectiveZoomFactor) / 180.0);
     double tangent = tan(thetaFOV / 2.0);
 
     double xv = xw / zw;
