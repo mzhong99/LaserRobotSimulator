@@ -5,8 +5,7 @@
 class DebugOverlay
 {
 private:
-    bool enabled;
-    SWTimer timer;
+    bool m_enabled;
 
 public:
     DebugOverlay();

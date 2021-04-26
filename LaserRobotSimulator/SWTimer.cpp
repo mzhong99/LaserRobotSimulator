@@ -1,37 +1,27 @@
 #include "SWTimer.hpp"
 
-SWTimer::SWTimer(uint32_t deltaTime_ms)
+std::mutex SWTimer::s_hwCounterLock = std::mutex();
+
+SWTimer::SWTimer(double waitTimeSeconds)
 {
-    this->startTicks = 0;
-    this->waitTicks = deltaTime_ms;
-    this->percentProgressOffset = 0;
+    this->m_startTicks = 0;
+    this->m_waitTime = waitTimeSeconds;
 }
 
 void SWTimer::Start()
 {
-    this->startTicks = SDL_GetTicks();
+    std::lock_guard<std::mutex> hwLock(SWTimer::s_hwCounterLock);
+    this->m_startTicks = SDL_GetPerformanceCounter();
 }
 
 bool SWTimer::Expired()
 {
-    uint32_t timeElapsed = this->ElapsedMS();
-    return timeElapsed > (1.0 - this->percentProgressOffset) * this->waitTicks;
+    return this->ElapsedSeconds() > m_waitTime;
 }
 
-double SWTimer::PercentElapsed()
+double SWTimer::ElapsedSeconds()
 {
-    double raw = (double)this->ElapsedMS() / (double)this->waitTicks 
-        + this->percentProgressOffset;
-
-    return fmin(1.0, raw);
+    std::lock_guard<std::mutex> hwLock(SWTimer::s_hwCounterLock);
+    return (SDL_GetPerformanceCounter() - m_startTicks) / (double)SDL_GetPerformanceFrequency();
 }
 
-uint32_t SWTimer::ElapsedMS()
-{
-    return SDL_GetTicks() - this->startTicks;
-}
-
-void SWTimer::SetProgress(double progress)
-{
-    this->percentProgressOffset = progress;
-}

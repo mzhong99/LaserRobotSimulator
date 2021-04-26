@@ -13,8 +13,8 @@ class App
 private:
     DebugOverlay debugOverlay;
 
-    SWTimer deltaTimer;
-    uint32_t deltaTime_ms;
+    SWTimer m_deltaTimer;
+    double m_deltaTime;
 
     Robot *m_robot;
     RobotController *m_controller;
@@ -33,7 +33,6 @@ public:
     void Poll();
 
     bool Exited() { return this->exited; }
-    uint32_t DeltaTimeMS() { return this->deltaTime_ms; }
-    double DetaTimeSeconds() { return (double)this->DeltaTimeMS() / 1000.0; }
+    double DeltaTimeSeconds() { return m_deltaTime; }
 };
 

@@ -52,7 +52,7 @@ public:
     void AccumulateForwards(double direction);
     void AccumulateSideways(double direction);
     void AccumulateUpDown(double direction) 
-    { m_posWorldCoords.y += Simulator::App().DetaTimeSeconds() * CAMERA_SPEED * direction; }
+    { m_posWorldCoords.y += Simulator::App().DeltaTimeSeconds() * CAMERA_SPEED * direction; }
 
     Vector2D<double> WorldToScreen(Vector3D<double> pointInWorld);
     void DrawArrow(
@@ -65,14 +65,14 @@ public:
 
     void ZoomIn() 
     { 
-        m_isoZoomFactor += ISO_ZOOM_VELOCITY * Simulator::App().DetaTimeSeconds(); 
-        m_perspectiveZoomFactor -= (PERSPECTIVE_ZOOM_VELOCITY * Simulator::App().DetaTimeSeconds());
+        m_isoZoomFactor += ISO_ZOOM_VELOCITY * Simulator::App().DeltaTimeSeconds(); 
+        m_perspectiveZoomFactor -= (PERSPECTIVE_ZOOM_VELOCITY * Simulator::App().DeltaTimeSeconds());
     }
 
     void ZoomOut()
     { 
-        m_isoZoomFactor -= ISO_ZOOM_VELOCITY * Simulator::App().DetaTimeSeconds(); 
-        m_perspectiveZoomFactor += (PERSPECTIVE_ZOOM_VELOCITY * Simulator::App().DetaTimeSeconds());
+        m_isoZoomFactor -= ISO_ZOOM_VELOCITY * Simulator::App().DeltaTimeSeconds(); 
+        m_perspectiveZoomFactor += (PERSPECTIVE_ZOOM_VELOCITY * Simulator::App().DeltaTimeSeconds());
     }
 
     void AccumulateScreenOffset(Vector2D<int> delta)

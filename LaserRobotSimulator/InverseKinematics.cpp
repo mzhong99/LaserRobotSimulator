@@ -1,8 +1,11 @@
 #include "InverseKinematics.hpp"
 #include "Robot.hpp"
 
-#define NEWTON_STEP_DELTA   (5e-3)
-#define ACCEPTABLE_ERROR    (1e-2)
+#define NEWTON_STEP_DELTA   (+5e-3)
+#define ACCEPTABLE_ERROR    (+1e-2)
+#define INV_KP              (+1e-2)
+#define INV_KI              (+1e-4)
+#define INV_KD              (-1e-2)
 
 std::vector<double> InverseKinematics::EEVelToJointVel(Matrix eeVel)
 {

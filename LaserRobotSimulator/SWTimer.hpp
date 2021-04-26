@@ -1,20 +1,20 @@
 #pragma once
 
 #include <SDL.h>
+#include <mutex>
 
 class SWTimer
 {
 private:
-    uint32_t startTicks;
-    uint32_t waitTicks;
-    double percentProgressOffset;
+    uint64_t m_startTicks;
+    double m_waitTime;
+
+    static std::mutex s_hwCounterLock;
 
 public:
-    SWTimer(uint32_t deltaTime_ms = 1);
+    SWTimer(double waitTimeSeconds = 0);
     void Start();
     bool Expired();
-    double PercentElapsed();
-    uint32_t ElapsedMS();
-    void SetProgress(double progress);
+    double ElapsedSeconds();
 };
 

@@ -65,7 +65,7 @@ void Camera::AccumulateForwards(double direction)
     double forwardsZ = cos(m_aboutCameraY);
 
     Vector3D<double> unit = Vector3D<double>(forwardsX, 0, forwardsZ);
-    m_posWorldCoords += unit * Simulator::App().DetaTimeSeconds() * (CAMERA_SPEED * direction);
+    m_posWorldCoords += unit * Simulator::App().DeltaTimeSeconds() * (CAMERA_SPEED * direction);
 }
 
 void Camera::AccumulateSideways(double direction)
@@ -74,7 +74,7 @@ void Camera::AccumulateSideways(double direction)
     double sidewaysZ = cos(m_aboutCameraY + (M_PI / 2.0));
 
     Vector3D<double> unit = Vector3D<double>(sidewaysX, 0, sidewaysZ);
-    m_posWorldCoords += unit * Simulator::App().DetaTimeSeconds() * (CAMERA_SPEED * direction);
+    m_posWorldCoords += unit * Simulator::App().DeltaTimeSeconds() * (CAMERA_SPEED * direction);
 }
 
 Vector2D<double> Camera::PerspectiveWorldToScreen(Vector3D<double> pointInWorld)

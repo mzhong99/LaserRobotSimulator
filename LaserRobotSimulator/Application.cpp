@@ -4,13 +4,13 @@
 
 App::App()
 {
-    this->deltaTimer = SWTimer(0);
+    this->m_deltaTimer = SWTimer(0);
     this->debugOverlay = DebugOverlay();
 
     this->exited = false;
 
-    this->deltaTime_ms = 0;
-    this->deltaTimer.Start();
+    this->m_deltaTime = 0.1;
+    this->m_deltaTimer.Start();
 
     this->m_robot = new Robot();
     this->m_view = new RobotView(this->m_robot);
@@ -72,8 +72,8 @@ void App::Poll()
     Simulator::Graphics().SwapBuffer();
     Simulator::Input().PollCleanup();
 
-    while (this->deltaTimer.ElapsedMS() < 1000 / FRAMERATE_CAP);
-    this->deltaTime_ms = this->deltaTimer.ElapsedMS();
-    this->deltaTimer.Start();
+    while (m_deltaTimer.ElapsedSeconds() < 1.0 / FRAMERATE_CAP);
+    m_deltaTime = m_deltaTimer.ElapsedSeconds();
+    m_deltaTimer.Start();
 }
 
