@@ -1,11 +1,15 @@
 #include "InverseKinematics.hpp"
 #include "Robot.hpp"
 
-#define NEWTON_STEP_DELTA   (+5e-3)
-#define ACCEPTABLE_ERROR    (+1e-2)
-#define INV_KP              (+1e-2)
-#define INV_KI              (+1e-4)
-#define INV_KD              (-1e-2)
+#define NEWTON_STEP_DELTA   (+3e-3)
+
+#define INV_LKP             (+1e-2)
+#define INV_LKI             (+1e-4)
+#define INV_LKD             (-1e-6)
+
+#define INV_AKP             (+5e-4)
+#define INV_AKI             (+1e-10)
+#define INV_AKD             (-1e-6)
 
 std::vector<double> InverseKinematics::EEVelToJointVel(Matrix eeVel)
 {
@@ -26,6 +30,12 @@ std::vector<double> InverseKinematics::EEVelToJointVel(Matrix eeVel)
     return jacobianAug2.RREFWithFreeVariables(avgFreeVars, isFreeVar);
 }
 
+void InverseKinematics::RefreshDeltaTime()
+{
+    m_deltaTime = m_deltaTimer.ElapsedSeconds();
+    m_deltaTimer.Start();
+}
+
 void InverseKinematics::CopyInputs()
 {
     std::lock_guard<std::mutex> guard(m_inputLock);
@@ -37,22 +47,32 @@ void InverseKinematics::CopyInputs()
 
 void InverseKinematics::RecomputeDistanceCorrection()
 {
-    m_linError = (m_eeTargetLinPos - m_fwdK.EELinPos());
-    m_angError = (m_eeTargetAngPos - m_fwdK.EEAngPos());
-    m_error = m_linError.Length() + m_angError.Length();
+    Vector3D<double> newLinError = (m_eeTargetLinPos - m_fwdK.EELinPos());
+    Vector3D<double> newAngError = (m_eeTargetAngPos - m_fwdK.EEAngPos());
+
+    m_linIntError = (newLinError - m_linError) * m_deltaTime;
+    m_linDifError = (newLinError - m_linError) * (1.0 / m_deltaTime);
+    m_linError = newLinError;
+
+    m_angIntError = (newAngError - m_angError) * m_deltaTime;
+    m_angDifError = (newAngError - m_angError) * (1.0 / m_deltaTime);
+    m_angError = newAngError;
 }
 
 void InverseKinematics::NewtonApproximateJoints()
 {
-    Vector3D<double> linDir = m_linError.Normalized();
-    Vector3D<double> angDir = m_angError.Normalized();
+    Vector3D<double> linD 
+        = m_linError * INV_LKP + m_linIntError * INV_LKI + m_linDifError * INV_LKD;
 
-    std::vector<double> eeVRaw = { linDir.x, linDir.y, linDir.z, angDir.x, angDir.y, angDir.z };
+    Vector3D<double> angD
+        = m_angError * INV_AKP + m_angIntError * INV_AKI + m_angDifError * INV_AKD;
+
+    std::vector<double> eeVRaw = { linD.x, linD.y, linD.z, angD.x, angD.y, angD.z };
     Matrix eeVCol = Matrix::CreateCol(eeVRaw);
     std::vector<double> qPrime = this->EEVelToJointVel(eeVCol);
 
     for (size_t qIter = 0; qIter < m_dhParams.size(); qIter++)
-        m_fwdK.AccQ(qIter, qPrime[qIter] * NEWTON_STEP_DELTA * sqrt(m_error));
+        m_fwdK.AccQ(qIter, qPrime[qIter]);
 
     m_fwdK.Recompute();
 }
@@ -70,6 +90,11 @@ void InverseKinematics::ReportAnswer()
     
     std::lock_guard<std::mutex> iguard(m_inputLock);
     m_oEEVel = m_iEEVel;
+
+    double linInstab2 = m_linError.Length2() + m_linDifError.Length2() + m_linIntError.Length2();
+    double angInstab2 = m_angError.Length2() + m_angDifError.Length2() + m_angIntError.Length2();
+
+    m_oInstability = sqrt(linInstab2 + angInstab2);
 }
 
 void InverseKinematics::TF_ComputeJointPosition()
@@ -80,6 +105,8 @@ void InverseKinematics::TF_ComputeJointPosition()
             break;
 
         this->CopyInputs();
+        this->RefreshDeltaTime();
+
         this->RecomputeDistanceCorrection();
         this->NewtonApproximateJoints();
         this->RecomputeInvDK();
@@ -89,6 +116,10 @@ void InverseKinematics::TF_ComputeJointPosition()
 
 InverseKinematics::InverseKinematics(std::vector<DHParam> params)
 {
+    m_deltaTimer = SWTimer(0);
+    m_deltaTimer.Start();
+    m_deltaTime = 0.1;
+
     m_killswitch = false;
     m_dhParams = params;
 
@@ -190,4 +221,10 @@ Transform InverseKinematics::TransformEEToBase()
 {
     std::lock_guard<std::mutex> guard(m_outputLock);
     return m_oTransformEEtoBase;
+}
+
+double InverseKinematics::Instability() 
+{
+    std::lock_guard<std::mutex> guard(m_outputLock);
+    return m_oInstability;
 }

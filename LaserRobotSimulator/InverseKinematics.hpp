@@ -15,6 +15,8 @@
 #include "RobotFwd.hpp"
 #include "ForwardKinematics.hpp"
 
+#include "SWTimer.hpp"
+
 class InverseKinematics
 {
 private:
@@ -24,6 +26,9 @@ private:
     std::atomic_bool m_killswitch;
     std::thread m_worker;
 
+    SWTimer m_deltaTimer;
+    double m_deltaTime;
+
     ForwardKinematics m_fwdK;
 
     std::vector<DHParam> m_dhParams;
@@ -32,9 +37,14 @@ private:
     Vector3D<double> m_eeTargetLinPos;
     Vector3D<double> m_eeTargetAngPos;
 
-    Vector3D<double> m_linError;
-    Vector3D<double> m_angError;
-    double m_error;
+    Vector3D<double> m_linError = 0;
+    Vector3D<double> m_angError = 0;
+
+    Vector3D<double> m_linIntError = 0;
+    Vector3D<double> m_angIntError = 0;
+
+    Vector3D<double> m_linDifError = 0;
+    Vector3D<double> m_angDifError = 0;
 
     VelocityCouple m_eeVel;
 
@@ -49,6 +59,8 @@ private:
     Vector3D<double> m_oEELinPos;
     Vector3D<double> m_oEEAngPos;
     Transform m_oTransformEEtoBase;
+
+    double m_oInstability;
 
     VelocityCouple m_oEEVel;
 
@@ -67,6 +79,7 @@ private:
     /* MEMBER FUNCTIONS                                                                           */
     /* ------------------------------------------------------------------------------------------ */
     std::vector<double> EEVelToJointVel(Matrix eeVel);
+    void RefreshDeltaTime();
 
     void CopyInputs();
 
@@ -96,6 +109,8 @@ public:
 
     Vector3D<double> EELinVel();
     Vector3D<double> EEAngVel();
+
+    double Instability();
 
     Transform TransformEEToBase();
 };

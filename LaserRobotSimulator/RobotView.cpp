@@ -20,9 +20,10 @@ void RobotView::ShowJointTable(std::vector<DHParam> dhparams)
 {
     Vector2D<int> offset = DK_SCREEN_OFFSET;
     Simulator::Graphics().PrintString(offset.x, offset.y, "Joint (DH) Table [%s]",
-        m_robot->SimMode() == SimulationMode::NONE ? "Kinematics" :
+        m_robot->SimMode() == SimulationMode::NONE ? "Frames Only" :
         m_robot->SimMode() == SimulationMode::STATICS ? "Statics" :
-        m_robot->SimMode() == SimulationMode::FWD_KINEMATICS ? "Differential Kinematics" :
+        m_robot->SimMode() == SimulationMode::FWD_KINEMATICS ? "Forward Kinematics" :
+        m_robot->SimMode() == SimulationMode::INV_KINEMATICS ? "Inverse Kinematics" :
         m_robot->SimMode() == SimulationMode::VIEW_ALL ? "View All" : "");
 
     for (size_t i = 0; i < this->m_robot->NumJoints(); i++)

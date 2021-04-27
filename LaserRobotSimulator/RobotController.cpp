@@ -334,6 +334,7 @@ void RobotController::Poll()
             break;
 
         case SimulationMode::INV_KINEMATICS:
+            this->m_robot->SelectIdx(this->m_robot->NumJoints() - 1);
             this->PollChangeInvK();
             this->PollChangeInvDK();
             break;
