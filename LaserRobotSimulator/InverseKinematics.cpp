@@ -7,8 +7,8 @@
 #define INV_LKI             (+1e-4)
 #define INV_LKD             (-1e-6)
 
-#define INV_AKP             (+5e-4)
-#define INV_AKI             (+1e-10)
+#define INV_AKP             (+5e-3)
+#define INV_AKI             (+1e-7)
 #define INV_AKD             (-1e-6)
 
 std::vector<double> InverseKinematics::EEVelToJointVel(Matrix eeVel)

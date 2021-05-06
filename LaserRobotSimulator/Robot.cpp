@@ -20,7 +20,6 @@ Robot::Robot()
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
     m_dhParams.push_back(DHParam::CreateRevolute(M_PI / 2.0, 0, 0));
-    m_dhParams.push_back(DHParam::CreatePrismatic(0, 0, 0));
 
     m_fwdK = ForwardKinematics(m_dhParams);
     for (size_t qIter = 0; qIter < this->NumJoints(); qIter++)

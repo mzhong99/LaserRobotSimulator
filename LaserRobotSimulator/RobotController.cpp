@@ -256,7 +256,7 @@ void RobotController::PollChangeInvK()
         {
             if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
             {
-                Vector3D<double> fullDelta = Vector3D<double>(0, EE_SENS * -1.0 * motion.Y(), 0);
+                Vector3D<double> fullDelta = Vector3D<double>(0, 0, EE_SENS * -1.0 * motion.Y());
                 m_robot->GetInvK().AccTargetEEPos(fullDelta, 0);
             }
             else
