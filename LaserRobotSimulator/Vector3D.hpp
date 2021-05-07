@@ -39,10 +39,10 @@ public:
     Vector3D<T> operator*(const T &val) const
     { return Vector3D<T>(this->x * val, this->y * val, this->z * val); }
 
-    Vector3D<T> operator+(const Vector3D<T> &rhs) const
+    Vector3D<T> operator+(const Vector3D<T>& rhs) const
     { return Vector3D<T>(this->x + rhs.x, this->y + rhs.y, this->z + rhs.z); }
 
-    Vector3D<T> operator-(const Vector3D<T> &rhs) const
+    Vector3D<T> operator-(const Vector3D<T>& rhs) const
     { return Vector3D<T>(this->x - rhs.x, this->y - rhs.y, this->z - rhs.z); }
 
     Vector3D<T> &operator+=(const Vector3D<T> &rhs)

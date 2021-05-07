@@ -215,7 +215,7 @@ Matrix Matrix::GetRow(size_t row)
     if (row >= this->Rows())
         return Matrix();
 
-    Matrix copy = Matrix(row, this->Cols());
+    Matrix copy = Matrix(1, this->Cols());
     for (size_t col = 0; col < this->Cols(); col++)
         copy.At(0, col) = this->At(row, col);
 
@@ -227,7 +227,7 @@ Matrix Matrix::GetCol(size_t col)
     if (col >= this->Cols())
         return Matrix();
 
-    Matrix copy = Matrix(this->Rows(), col);
+    Matrix copy = Matrix(this->Rows(), 1);
     for (size_t row = 0; row < this->Rows(); row++)
         copy.At(row, 0) = this->At(row, col);
 

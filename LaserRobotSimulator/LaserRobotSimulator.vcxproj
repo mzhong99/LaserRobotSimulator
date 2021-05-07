@@ -161,9 +161,11 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DebugOverlay.cpp" />
+    <ClCompile Include="Dynamics.cpp" />
     <ClCompile Include="ForceMomentCouple.cpp" />
     <ClCompile Include="ForwardKinematics.cpp" />
     <ClCompile Include="InverseKinematics.cpp" />
+    <ClCompile Include="JointPath.cpp" />
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="RobotController.cpp" />
@@ -184,9 +186,11 @@
     <ClInclude Include="CoordinateStub.hpp" />
     <ClInclude Include="DebugOverlay.hpp" />
     <ClInclude Include="DHParam.hpp" />
+    <ClInclude Include="Dynamics.hpp" />
     <ClInclude Include="ForceMomentCouple.hpp" />
     <ClInclude Include="ForwardKinematics.hpp" />
     <ClInclude Include="InverseKinematics.hpp" />
+    <ClInclude Include="JointPath.hpp" />
     <ClInclude Include="Matrix.hpp" />
     <ClInclude Include="Robot.hpp" />
     <ClInclude Include="RobotFwd.hpp" />
