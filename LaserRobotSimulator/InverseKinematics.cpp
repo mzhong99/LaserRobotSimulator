@@ -175,6 +175,15 @@ void InverseKinematics::AccTargetEEAngVel(double deltaMag, double deltaAngX, dou
     m_iEEVel.Angular().AccumulateYAngle(deltaAngY);
 }
 
+void InverseKinematics::SetTargetEEPos(Vector3D<double> eeLinPos, Vector3D<double> eeAngPos)
+{
+    std::lock_guard<std::mutex> guard(m_inputLock);
+
+    m_iEELinPos = eeLinPos;
+    m_iEEAngPos = eeAngPos;
+    m_inputChanged = true;
+}
+
 std::vector<CoordinateStub> InverseKinematics::GetStubs()
 {
     std::lock_guard<std::mutex> guard(m_outputLock);

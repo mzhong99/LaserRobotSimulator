@@ -27,6 +27,14 @@ Robot::Robot()
 
     m_invK = new InverseKinematics(m_dhParams);
     m_statics = Statics(&m_fwdK);
+
+    m_planner = new RobotPathPlanner(m_dhParams);
+}
+
+Robot::~Robot()
+{
+    delete m_invK;
+    delete m_planner;
 }
 
 
@@ -34,5 +42,6 @@ void Robot::Recompute()
 {
     m_fwdK.Recompute();
     m_statics.Recompute();
+    m_planner->Recompute();
 }
 

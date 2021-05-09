@@ -25,7 +25,9 @@
 
 #include "Camera.hpp"
 
-enum class SimulationMode { NONE, STATICS, FWD_KINEMATICS, INV_KINEMATICS, VIEW_ALL };
+#include "RobotPathPlanner.hpp"
+
+enum class SimulationMode { NONE, STATICS, FWD_KINEMATICS, INV_KINEMATICS, PATH_PLAN, VIEW_ALL };
 
 class Robot
 {
@@ -33,10 +35,11 @@ private:
     /* -- DH Parameters. Governs basically everything else. -- */
     std::vector<DHParam> m_dhParams;
 
-    /* -- Math models for kinematics and statics -- */
+    /* -- Math models for kinematics, statics, and path planning -- */
     ForwardKinematics m_fwdK;
     InverseKinematics *m_invK;
     Statics m_statics;
+    RobotPathPlanner *m_planner;
 
     /* -- Simulation GUI Controls -- */
     SimulationMode m_simulationMode;
@@ -44,7 +47,7 @@ private:
 
 public:
     Robot();
-    ~Robot() { delete m_invK; }
+    ~Robot();
 
     Robot(const Robot &rhs) = delete;
 
@@ -54,6 +57,7 @@ public:
     ForwardKinematics &GetFwdK() { return m_fwdK; }
     InverseKinematics &GetInvK() { return *m_invK; }
     Statics &GetStatics() { return m_statics; }
+    RobotPathPlanner &GetPlanner() { return *m_planner; }
 
     std::vector<DHParam> GetAllDHParams() { return this->m_dhParams; }
 
@@ -72,7 +76,7 @@ private:
     Robot *m_robot;
     Camera m_camera;
 
-    void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber);
+    void RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber, bool zGreen = true);
 
     void RenderJointVelocity(
         CoordinateStub &stub, double velocity, JointType jointType, int frameNumber);
@@ -103,6 +107,11 @@ private:
     void ShowBaseTransformStatics();
 
     void ShowStatics();
+
+    void ShowPathPlannerState();
+    void ShowPathPlannerP12();
+    void ShowPathPlannerTravelTime();
+    void ShowPathPlanner();
 
 public:
     RobotView(Robot *robot);
@@ -138,6 +147,8 @@ private:
     void PollToggleShown();
 
     void PollChangeStatics();
+
+    void PollChangePathPlanner();
 
 public:
     RobotController(Robot *robot, RobotView *view);

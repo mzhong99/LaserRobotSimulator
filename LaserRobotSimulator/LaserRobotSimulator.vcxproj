@@ -166,9 +166,11 @@
     <ClCompile Include="ForwardKinematics.cpp" />
     <ClCompile Include="InverseKinematics.cpp" />
     <ClCompile Include="JointPath.cpp" />
+    <ClCompile Include="LinearInterpolator.cpp" />
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="RobotController.cpp" />
+    <ClCompile Include="RobotPathPlanner.cpp" />
     <ClCompile Include="RobotView.cpp" />
     <ClCompile Include="Rotation.cpp" />
     <ClCompile Include="Simulator.cpp" />
@@ -191,9 +193,11 @@
     <ClInclude Include="ForwardKinematics.hpp" />
     <ClInclude Include="InverseKinematics.hpp" />
     <ClInclude Include="JointPath.hpp" />
+    <ClInclude Include="LinearInterpolator.hpp" />
     <ClInclude Include="Matrix.hpp" />
     <ClInclude Include="Robot.hpp" />
     <ClInclude Include="RobotFwd.hpp" />
+    <ClInclude Include="RobotPathPlanner.hpp" />
     <ClInclude Include="Rotation.hpp" />
     <ClInclude Include="Semaphore.hpp" />
     <ClInclude Include="Simulator.hpp" />

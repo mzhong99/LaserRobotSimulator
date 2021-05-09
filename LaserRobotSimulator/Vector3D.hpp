@@ -33,6 +33,13 @@ public:
         return result;
     }
 
+    bool operator==(const Vector3D<T> &rhs)
+    {
+        return fabs(rhs.x - this->x) < 1e-1 &&
+            fabs(rhs.y - this->y) < 1e-1 &&
+            fabs(rhs.z - this->z) < 1e-1;
+    }
+
     Vector3D<T> ElementMult(const Vector3D<T> &rhs)
     { return Vector3D<T>(this->x * rhs.x, this->y * rhs.y, this->z * rhs.z); }
 

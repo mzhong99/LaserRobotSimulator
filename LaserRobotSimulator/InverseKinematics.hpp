@@ -100,6 +100,8 @@ public:
     void AccTargetEELinVel(double deltaMag, double deltaAngX, double deltaAngY);
     void AccTargetEEAngVel(double deltaMag, double deltaAngX, double deltaAngY);
 
+    void SetTargetEEPos(Vector3D<double> eeLinPos, Vector3D<double> eeAngPos);
+
     std::vector<CoordinateStub> GetStubs();
     std::vector<DHParam> GetPose();
     std::vector<double> GetQPrime();

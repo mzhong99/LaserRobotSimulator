@@ -88,6 +88,9 @@ void RobotController::PollSelectSimMode()
 
     if (Simulator::Input().KeyTapped(SDLK_v))
         m_robot->SelectSimMode(SimulationMode::NONE);
+
+    if (Simulator::Input().KeyTapped(SDLK_g))
+        m_robot->SelectSimMode(SimulationMode::PATH_PLAN);
 }
 
 void RobotController::PollChangeCamera()
@@ -231,6 +234,59 @@ void RobotController::PollChangeStatics()
     }
 }
 
+void RobotController::PollChangePathPlanner()
+{
+    if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
+    {
+        Vector2D<int> motion = Simulator::Input().MouseMotion();
+        Vector3D<double> linDelta = 0;
+        Vector3D<double> angDelta = 0;
+
+        if (Simulator::Input().KeyPressed(SDLK_LALT))
+        {
+            if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+                angDelta = Vector3D<double>(0, EE_SENS * -1.0 * motion.Y(), 0);
+            else
+            {
+                Vector3D<double> forwardsUnit = m_view->Camera().ForwardsUnit();
+                Vector3D<double> sidewaysUnit = m_view->Camera().SidewaysUnit();
+
+                Vector3D<double> forwardsDelta = forwardsUnit * EE_SENS * -1.0 * (double)motion.Y();
+                Vector3D<double> sidewaysDelta = sidewaysUnit * EE_SENS * (double)motion.X();
+
+                angDelta = forwardsDelta + sidewaysDelta;
+            }
+        }
+        else
+        {
+            if (Simulator::Input().KeyPressed(SDLK_LSHIFT))
+                linDelta = Vector3D<double>(0, EE_SENS * -1.0 * motion.Y(), 0);
+            else
+            {
+                Vector3D<double> forwardsUnit = m_view->Camera().ForwardsUnit();
+                Vector3D<double> sidewaysUnit = m_view->Camera().SidewaysUnit();
+
+                Vector3D<double> forwardsDelta = forwardsUnit * EE_SENS * -1.0 * (double)motion.Y();
+                Vector3D<double> sidewaysDelta = sidewaysUnit * EE_SENS * (double)motion.X();
+
+                linDelta = forwardsDelta + sidewaysDelta;
+            }
+        }
+
+        m_robot->GetPlanner().AccLinPos(linDelta);
+        m_robot->GetPlanner().AccAngPos(angDelta);
+    }
+
+    if (Simulator::Input().MousePressed(SDL_BUTTON_RIGHT))
+    {
+        Vector2D<int> motion = Simulator::Input().MouseMotion();
+        m_robot->GetPlanner().AccTravelTime(motion.Y() * EE_SENS);
+    }
+
+    if (Simulator::Input().KeyTapped(SDLK_x))
+        m_robot->GetPlanner().AdvanceState();
+}
+
 void RobotController::PollChangeInvK()
 {
     if (Simulator::Input().MousePressed(SDL_BUTTON_LEFT))
@@ -342,6 +398,10 @@ void RobotController::Poll()
         case SimulationMode::STATICS:
             this->PollChangeStatics();
             this->PollChangeFwdK();
+            break;
+
+        case SimulationMode::PATH_PLAN:
+            this->PollChangePathPlanner();
             break;
 
         case SimulationMode::VIEW_ALL:

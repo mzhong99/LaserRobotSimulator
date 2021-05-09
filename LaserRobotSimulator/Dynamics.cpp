@@ -1,5 +1,8 @@
 #include "Dynamics.hpp"
 
+#define DIFFERENTIAL_DELTA      (1e-8)
+#define LIN_INTERP_NPOINTS      (64)
+
 double Dynamics::KineticAtPose(std::vector<double> qPos, std::vector<double> qVel)
 {
     std::vector<DHParam> dhParams = m_dhParams;
@@ -135,6 +138,28 @@ std::vector<double> Dynamics::LagrVsQPrimeAtTime(double time)
     return results;
 }
 
+void Dynamics::Precompute()
+{
+    m_qPosInterpolated.resize(m_dhParams.size());
+    m_qVelInterpolated.resize(m_dhParams.size());
+    m_torquesInterpolated.resize(m_dhParams.size());
+
+    for (size_t i = 0; i < LIN_INTERP_NPOINTS; i++)
+    {
+        double time = m_travelTime * (double)i / (double)LIN_INTERP_NPOINTS;
+        this->RecomputeAtTime(time);
+
+        for (size_t qIter = 0; qIter < m_dhParams.size(); qIter++)
+        {
+            m_qPosInterpolated[qIter].AddTime(time, m_qPos[qIter]);
+            m_qVelInterpolated[qIter].AddTime(time, m_qVel[qIter]);
+            m_torquesInterpolated[qIter].AddTime(time, m_torques[qIter]);
+        }
+
+        std::cout << "Computing: " << i << std::endl;
+    }
+}
+
 void Dynamics::RecomputeAtTime(double time)
 {
     std::vector<double> lagrVsQ = this->LagrVsQAtTime(time);
@@ -149,4 +174,42 @@ void Dynamics::RecomputeAtTime(double time)
     m_torques = std::vector<double>();
     for (size_t i = 0; i < m_dhParams.size(); i++)
         m_torques.push_back(ddtLagrVsQPrime[i] - lagrVsQ[i]);
+
+    m_qPos = std::vector<double>();
+    for (size_t i = 0; i < m_dhParams.size(); i++)
+        m_qPos.push_back(m_jointPaths[i].QPosAt(time));
+
+    m_qVel = std::vector<double>();
+    for (size_t i = 0; i < m_dhParams.size(); i++)
+        m_qVel.push_back(m_jointPaths[i].QVelAt(time));
+}
+
+std::vector<double> Dynamics::TorquesAtTime(double time)
+{
+    std::vector<double> torques;
+
+    for (LinearInterpolator &interpolator : m_torquesInterpolated)
+        torques.push_back(interpolator.Interpolate(time));
+
+    return torques;
+}
+
+std::vector<double> Dynamics::QPosAtTime(double time)
+{
+    std::vector<double> qPos;
+
+    for (LinearInterpolator &interpolator : m_qPosInterpolated)
+        qPos.push_back(interpolator.Interpolate(time));
+
+    return qPos;
+}
+
+std::vector<double> Dynamics::QVelAtTime(double time)
+{
+    std::vector<double> qVel;
+
+    for (LinearInterpolator &interpolator : m_qVelInterpolated)
+        qVel.push_back(interpolator.Interpolate(time));
+
+    return qVel;
 }

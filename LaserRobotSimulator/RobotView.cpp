@@ -8,6 +8,7 @@
 
 #define DK_SCREEN_OFFSET        (Vector2D<int>(24, 24))
 #define CONTROLS_OFFSET         (Vector2D<int>(32, 560))
+#define PP_OFFSET               (Vector2D<int>(1000, 24))
 
 RobotView::RobotView(Robot *robot)
 {
@@ -248,7 +249,7 @@ void RobotView::ShowStatics()
     this->ShowBaseTransformStatics();
 }
 
-void RobotView::RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber)
+void RobotView::RenderStub(CoordinateStub &stub, bool highlighted, size_t frameNumber, bool zGreen)
 {
     Transform transform = stub.GetTransform();
     Vector3D<double> origin3D = transform.GetColumn(3);
@@ -260,7 +261,9 @@ void RobotView::RenderStub(CoordinateStub &stub, bool highlighted, size_t frameN
     this->m_camera.DrawArrow(origin3D, xHat3D, "x%u", (int)frameNumber);
     this->m_camera.DrawArrow(origin3D, yHat3D, "y%u", (int)frameNumber);
 
-    Simulator::Graphics().SetFGColor(Graphics::COLOR_GREEN);
+    if (zGreen)
+        Simulator::Graphics().SetFGColor(Graphics::COLOR_GREEN);
+
     this->m_camera.DrawArrow(origin3D, zHat3D, "z%u", (int)frameNumber);
     Simulator::Graphics().SetFGColor(Graphics::COLOR_WHITE);
 }
@@ -269,6 +272,103 @@ void RobotView::ToggleShown(size_t idx)
 {
     if (idx < this->m_shown.size())
         this->m_shown[idx] = !this->m_shown[idx];
+}
+
+void RobotView::ShowPathPlannerState()
+{
+    Vector2D<int> offset = PP_OFFSET;
+    RobotPathPlannerState state = m_robot->GetPlanner().GetState();
+
+    Simulator::Graphics().PrintString(offset.x, offset.y + 12, "Path Planner State: [%s]",
+        state == RobotPathPlannerState::PLAN_P1 ? "Plan P1" :
+        state == RobotPathPlannerState::PLAN_P2 ? "Plan P2" :
+        state == RobotPathPlannerState::COMPUTING_PATH_P1 ? "Computing P1" :
+        state == RobotPathPlannerState::COMPUTING_PATH_P2 ? "Computing P2" : "Showing Result");
+
+    Vector3D<double> linP1 = m_robot->GetPlanner().GetP1Stub().Position;
+    Simulator::Graphics().PrintString(offset.x, offset.y + 24,
+        "P1 Linear: <%.4f, %.4f, %.4f>m", linP1.x, linP1.y, linP1.z);
+
+    Vector3D<double> linP2 = m_robot->GetPlanner().GetP2Stub().Position;
+    Simulator::Graphics().PrintString(offset.x, offset.y + 36,
+        "P2 Linear: <%.4f, %.4f, %.4f>m", linP2.x, linP2.y, linP2.z);
+}
+
+void RobotView::ShowPathPlannerTravelTime()
+{
+    Vector2D<int> offset = PP_OFFSET;
+    Simulator::Graphics().PrintString(offset.x, offset.y, "Travel Time: %.4f sec",
+        m_robot->GetPlanner().TravelTime());
+}
+
+void RobotView::ShowPathPlannerP12()
+{
+    CoordinateStub stubP1 = m_robot->GetPlanner().GetP1Stub();
+    CoordinateStub stubP2 = m_robot->GetPlanner().GetP2Stub();
+    RobotPathPlannerState state = m_robot->GetPlanner().GetState();
+
+    this->RenderStub(stubP1, state == RobotPathPlannerState::PLAN_P1, 1, false);
+    this->RenderStub(stubP2, state == RobotPathPlannerState::PLAN_P2, 2, false);
+
+    Vector3D<double> angP1 = m_robot->GetPlanner().GetP1Ang();
+    m_camera.DrawArrowFromOffset(stubP1.Position, angP1, 
+        "<%.4f, %.4f, %.4f>rad", angP1.x, angP1.y, angP1.z);
+
+    Vector3D<double> angP2 = m_robot->GetPlanner().GetP2Ang();
+    m_camera.DrawArrowFromOffset(stubP2.Position, angP2, 
+        "<%.4f, %.4f, %f.4>rad", angP2.x, angP2.y, angP2.z);
+}
+
+void RobotView::ShowPathPlanner()
+{
+    this->ShowPathPlannerState();
+    this->ShowPathPlannerTravelTime();
+    this->ShowPathPlannerP12();
+
+    RobotPathPlannerState state = m_robot->GetPlanner().GetState();
+
+    switch (state)
+    {
+        case RobotPathPlannerState::COMPUTING_PATH_P1:
+        case RobotPathPlannerState::COMPUTING_PATH_P2:
+        {
+            CoordinateStub baseFrame;
+
+            this->ShowJointTable(m_robot->GetPlanner().GetInvKTable());
+            this->RenderStub(baseFrame, false, 0);
+
+            std::vector<CoordinateStub> stubs = m_robot->GetPlanner().GetInvKApprox();
+
+            for (size_t i = 0; i < stubs.size(); i++)
+                this->RenderStub(stubs[i], false, i + 1);
+
+            break;
+        }
+
+        case RobotPathPlannerState::DISPLAY_RESULT:
+        {
+            std::vector<DHParam> dhparams = m_robot->GetPlanner().GetPathPlanTable();
+            this->ShowJointTable(dhparams);
+
+            CoordinateStub baseFrame, prevStub;
+            this->RenderStub(baseFrame, false, 0);
+            std::vector<CoordinateStub> stubs = m_robot->GetPlanner().GetPathPlan();
+            std::vector<double> reactions = m_robot->GetPlanner().GetQReactions();
+
+            for (size_t i = 0; i < stubs.size(); i++)
+            {
+                this->RenderStub(stubs[i], false, i + 1);
+                this->RenderJointStaticReaction(prevStub, reactions[i], dhparams[i].Type, i + 1);
+
+                prevStub = stubs[i];
+            }
+
+            break;
+        }
+
+        default:
+            break;
+    }
 }
 
 void RobotView::Poll()
@@ -300,6 +400,10 @@ void RobotView::Poll()
             this->ShowFwdK();
             this->ShowFwdDK();
             this->ShowStatics();
+            break;
+
+        case SimulationMode::PATH_PLAN:
+            this->ShowPathPlanner();
             break;
 
         default:
